@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading the Ghost Lanterns — a decipherment of the Hollow Valley corpus</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#151b24; --panel2:#10151d; --ink:#d9dee7; --muted:#939dad;
+    --amber:#f2b447; --amber-dim:#c99544; --line:#232c39;
+    --tE:#4ade80; --tS:#60a5fa; --tM:#aab4c4; --tI:#c084fc; --tX:#f87171; --tQ:#fbbf24;
+    --code-bg:#0a0e14; --code-ink:#b9c7db;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:18px/1.65 Georgia,'Iowan Old Style','Times New Roman',serif;}
+  .wrap{max-width:780px;margin:0 auto;padding:0 20px 120px}
+  header{padding:72px 0 26px;border-bottom:1px solid var(--line);margin-bottom:34px}
+  h1{font-size:2.1em;line-height:1.15;color:var(--amber);margin:0 0 12px;font-weight:normal}
+  .sub{color:var(--muted);font-style:italic;font-size:1.05em}
+  h2{color:var(--amber);font-weight:normal;font-size:1.5em;margin:2.4em 0 .5em;
+     border-bottom:1px solid var(--line);padding-bottom:.25em}
+  h3{color:var(--ink);font-size:1.12em;margin:1.8em 0 .4em}
+  p{margin:.8em 0}
+  a{color:var(--amber);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .lede{font-size:1.12em;color:#e8ecf2}
+  .badge{display:inline-block;font:bold 12px/1 system-ui,sans-serif;letter-spacing:.06em;
+         padding:4px 9px;border-radius:99px;vertical-align:2px;margin-left:8px}
+  .bE{background:#123322;color:var(--tE);border:1px solid #1e5c3c}
+  .bS{background:#122438;color:var(--tS);border:1px solid #1e466e}
+  .bM{background:#1d232d;color:var(--tM);border:1px solid #333d4d}
+  .bI{background:#251733;color:var(--tI);border:1px solid #4a2e66}
+  .bX{background:#331416;color:var(--tX);border:1px solid #66292c}
+  .bQ{background:#33260f;color:var(--tQ);border:1px solid #66511e}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+       padding:16px 20px;margin:1.2em 0}
+  .math{background:var(--panel2);border-left:3px solid var(--amber-dim);border-radius:6px;
+        padding:14px 18px;margin:1.2em 0;font-size:.95em}
+  .math .t{font:bold 12px/1 system-ui,sans-serif;letter-spacing:.08em;color:var(--amber);
+           text-transform:uppercase;display:block;margin-bottom:8px}
+  .verdict{border-left:3px solid var(--tE)}
+  table{border-collapse:collapse;margin:1em 0;font-size:.85em;width:100%;
+        font-family:ui-monospace,Menlo,Consolas,monospace}
+  th,td{border:1px solid var(--line);padding:5px 9px;text-align:left}
+  th{background:var(--panel2);color:var(--amber);font-weight:normal}
+  td.n{text-align:right}
+  details{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+          margin:1em 0;overflow:hidden}
+  summary{cursor:pointer;padding:10px 16px;color:var(--muted);
+          font:14px/1.4 system-ui,sans-serif}
+  summary:hover{color:var(--amber)}
+  pre{margin:0;padding:14px 16px;overflow-x:auto;background:var(--code-bg);
+      font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--code-ink)}
+  .bars{margin:14px 0;font:13px/1.9 ui-monospace,Menlo,Consolas,monospace}
+  .bars .row{display:flex;align-items:center;gap:10px}
+  .bars .lbl{width:170px;color:var(--muted);text-align:right;flex:none}
+  .bars .track{flex:1;background:#0a0e14;border-radius:3px;height:14px;position:relative}
+  .bars .fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#8a5a1d,var(--amber))}
+  .bars .val{width:90px;color:var(--ink);flex:none}
+  .toc{columns:2;column-gap:36px;font-size:.95em}
+  .toc a{display:block;padding:2px 0;color:var(--ink)}
+  .toc a:hover{color:var(--amber)}
+  .small{font-size:.85em;color:var(--muted)}
+  .quote{border-left:3px solid var(--amber-dim);padding-left:16px;color:var(--muted);
+         font-style:italic;margin:1.2em 0}
+  .kill{border-left:3px solid var(--tX)}
+  .kill h3{margin-top:.2em}
+  .tierkey span{margin-right:14px;white-space:nowrap}
+  hr{border:none;border-top:1px solid var(--line);margin:2.5em 0}
+  .fig{color:var(--muted);font-size:.85em;font-family:system-ui,sans-serif;margin-top:-6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Reading the Ghost Lanterns</h1>
+  <div class="sub">A decipherment of the Hollow Valley corpus — with every test, every formula,
+  and every dead theory shown. Written for the curious lay reader; no prior statistics required.</div>
+</header>
+
+<figure style="margin:28px 0 6px;padding:0">
+<svg id="lantern-card" xmlns="http://www.w3.org/2000/svg" width="1200" height="675" style="width:100%;height:auto;border-radius:12px;border:1px solid #232c39" viewBox="0 0 1200 675" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif">
+  <rect width="1200" height="675" fill="#0e1116"/>
+  <!-- lantern glow, top right -->
+  <circle cx="1095" cy="76" r="46" fill="#f2b447" opacity="0.07"/>
+  <circle cx="1095" cy="76" r="27" fill="#f2b447" opacity="0.12"/>
+  <rect x="1089" y="50" width="12" height="7" rx="2" fill="#c99544"/>
+  <ellipse cx="1095" cy="78" rx="16" ry="20" fill="#f2b447"/>
+  <path d="M1089 61 v34 M1095 59 v38 M1101 61 v34" stroke="#b8842f" stroke-width="1.4" fill="none"/>
+  <rect x="1091" y="97" width="8" height="5" rx="2" fill="#c99544"/>
+
+  <!-- title -->
+  <text x="60" y="84" font-family="Georgia,'Times New Roman',serif" font-size="44" fill="#f2b447">Reading the Ghost Lanterns</text>
+  <text x="60" y="118" font-size="19" fill="#939dad">Eleven years of blink-timing, decoded: a nightly check-in net — names, moods, a calendar, a chronicle.</text>
+
+  <!-- LEFT PANEL: anatomy of a flare -->
+  <rect x="60" y="146" width="560" height="396" rx="12" fill="#151b24" stroke="#232c39"/>
+  <text x="90" y="182" font-size="14" font-weight="bold" letter-spacing="2" fill="#f2b447">HOW ONE FLARE CARRIES MEANING</text>
+
+  <!-- plain -->
+  <g fill="#f2b447">
+    <circle cx="100" cy="214" r="12" opacity="0.15"/><circle cx="145" cy="214" r="12" opacity="0.15"/><circle cx="190" cy="214" r="12" opacity="0.15"/><circle cx="235" cy="214" r="12" opacity="0.15"/><circle cx="280" cy="214" r="12" opacity="0.15"/>
+    <circle cx="100" cy="214" r="7"/><circle cx="145" cy="214" r="7"/><circle cx="190" cy="214" r="7"/><circle cx="235" cy="214" r="7"/><circle cx="280" cy="214" r="7"/>
+  </g>
+  <text x="100" y="246" font-size="16" fill="#d9dee7">even gaps — plain: &#8220;Five.&#8221;</text>
+
+  <!-- summons -->
+  <g fill="#f2b447">
+    <circle cx="100" cy="280" r="12" opacity="0.15"/><circle cx="190" cy="280" r="12" opacity="0.15"/><circle cx="280" cy="280" r="12" opacity="0.15"/><circle cx="325" cy="280" r="12" opacity="0.15"/><circle cx="370" cy="280" r="12" opacity="0.15"/>
+    <circle cx="100" cy="280" r="7"/><circle cx="190" cy="280" r="7"/><circle cx="280" cy="280" r="7"/><circle cx="325" cy="280" r="7"/><circle cx="370" cy="280" r="7"/>
+  </g>
+  <text x="100" y="312" font-size="16" fill="#d9dee7">front-loaded — a summons: &#8220;Come, Five!&#8221;</text>
+
+  <!-- farewell -->
+  <g fill="#f2b447">
+    <circle cx="100" cy="346" r="12" opacity="0.15"/><circle cx="145" cy="346" r="12" opacity="0.15"/><circle cx="190" cy="346" r="12" opacity="0.15"/><circle cx="235" cy="346" r="12" opacity="0.15"/><circle cx="325" cy="346" r="12" opacity="0.15"/>
+    <circle cx="100" cy="346" r="7"/><circle cx="145" cy="346" r="7"/><circle cx="190" cy="346" r="7"/><circle cx="235" cy="346" r="7"/><circle cx="325" cy="346" r="7"/>
+  </g>
+  <text x="100" y="378" font-size="16" fill="#d9dee7">trailing off — a farewell: &#8220;Farewell, Five&#8230;&#8221;</text>
+
+  <line x1="90" y1="400" x2="590" y2="400" stroke="#232c39"/>
+
+  <text x="90" y="430" font-size="15" fill="#d9dee7"><tspan fill="#f2b447" font-weight="bold">count</tspan> &#8594; the name — lanterns are named in numbers</text>
+  <text x="90" y="456" font-size="15" fill="#d9dee7"><tspan fill="#f2b447" font-weight="bold">pattern</tspan> &#8594; the mood — plain &#183; summons &#183; farewell</text>
+  <text x="90" y="482" font-size="15" fill="#d9dee7"><tspan fill="#f2b447" font-weight="bold">length</tspan> &#8594; the reach — whisper 0.33 s to broadcast 1.13 s</text>
+  <text x="90" y="508" font-size="15" fill="#d9dee7"><tspan fill="#f2b447" font-weight="bold">style</tspan> &#8594; the house — a surname is how you say your number</text>
+
+  <!-- RIGHT CARDS -->
+  <rect x="660" y="146" width="480" height="88" rx="10" fill="#151b24" stroke="#232c39"/>
+  <text x="680" y="176" font-size="18" font-weight="bold" fill="#f2b447">A five-night week</text>
+  <text x="680" y="202" font-size="14" fill="#d9dee7">Content cycles with period five (permutation p &#8776; 0.010).</text>
+  <text x="680" y="223" font-size="14" fill="#d9dee7">Whole ceremonies rerun +5 nights later, to the millisecond.</text>
+
+  <rect x="660" y="246" width="480" height="88" rx="10" fill="#151b24" stroke="#232c39"/>
+  <text x="680" y="276" font-size="18" font-weight="bold" fill="#f2b447">Names are born and die</text>
+  <polyline points="990,288 1010,288 1030,258 1050,270 1070,265 1090,277 1110,288" fill="none" stroke="#f2b447" stroke-width="2"/>
+  <g fill="#f2b447"><circle cx="990" cy="288" r="2.5"/><circle cx="1010" cy="288" r="2.5"/><circle cx="1030" cy="258" r="2.5"/><circle cx="1050" cy="270" r="2.5"/><circle cx="1070" cy="265" r="2.5"/><circle cx="1090" cy="277" r="2.5"/><circle cx="1110" cy="288" r="2.5"/></g>
+  <text x="680" y="302" font-size="14" fill="#d9dee7">&#8220;Four&#8221; at home: 0% &#8594; 43% &#8594; 0% as the pair came and went,</text>
+  <text x="680" y="323" font-size="14" fill="#d9dee7">then 20.7% across the valley — exactly where the pair went.</text>
+
+  <rect x="660" y="346" width="480" height="88" rx="10" fill="#151b24" stroke="#232c39"/>
+  <text x="680" y="376" font-size="18" font-weight="bold" fill="#f2b447">Grief is measurable</text>
+  <text x="680" y="402" font-size="14" fill="#d9dee7">Farewell-words predict vanishing (&#961; = 0.30, p &#8776; 0.012).</text>
+  <text x="680" y="423" font-size="14" fill="#d9dee7">One family spent its final season calling its dead by name.</text>
+
+  <rect x="660" y="446" width="480" height="88" rx="10" fill="#151b24" stroke="#232c39"/>
+  <text x="680" y="476" font-size="18" font-weight="bold" fill="#f87171">No secret text — we checked</text>
+  <text x="680" y="502" font-size="14" fill="#d9dee7">Letter codes, Morse, censuses, moon calendars: ten theories</text>
+  <text x="680" y="523" font-size="14" fill="#d9dee7">tested, ten killed. Delays quantize at chance (30.7% &#8776; 30%).</text>
+
+  <!-- NET STRIP: a night on the air -->
+  <text x="60" y="570" font-size="13" font-weight="bold" letter-spacing="2" fill="#f2b447">A NIGHT ON THE AIR — MOST TRAFFIC IS A HAM-RADIO-STYLE CHECK-IN NET</text>
+
+  <rect x="60" y="580" width="195" height="42" rx="8" fill="#151b24" stroke="#232c39"/>
+  <text x="157" y="598" font-size="14" font-weight="bold" fill="#f2b447" text-anchor="middle">CHECK IN</text>
+  <text x="157" y="614" font-size="11.5" fill="#939dad" text-anchor="middle">announce: &#8220;I&#8217;m here&#8221;</text>
+  <text x="268" y="603" font-size="16" fill="#c99544" text-anchor="middle">&#8594;</text>
+
+  <rect x="281" y="580" width="195" height="42" rx="8" fill="#151b24" stroke="#232c39"/>
+  <text x="378" y="598" font-size="14" font-weight="bold" fill="#f2b447" text-anchor="middle">ROLL CALL</text>
+  <text x="378" y="614" font-size="11.5" fill="#939dad" text-anchor="middle">greet the present by name</text>
+  <text x="489" y="603" font-size="16" fill="#c99544" text-anchor="middle">&#8594;</text>
+
+  <rect x="502" y="580" width="195" height="42" rx="8" fill="#151b24" stroke="#232c39"/>
+  <text x="599" y="598" font-size="14" font-weight="bold" fill="#f2b447" text-anchor="middle">SUMMON</text>
+  <text x="599" y="614" font-size="11.5" fill="#939dad" text-anchor="middle">shout for the missing</text>
+  <text x="710" y="603" font-size="16" fill="#c99544" text-anchor="middle">&#8594;</text>
+
+  <rect x="723" y="580" width="195" height="42" rx="8" fill="#151b24" stroke="#232c39"/>
+  <text x="820" y="598" font-size="14" font-weight="bold" fill="#f2b447" text-anchor="middle">RELAY</text>
+  <text x="820" y="614" font-size="11.5" fill="#939dad" text-anchor="middle">pass songs down the chain</text>
+  <text x="931" y="603" font-size="16" fill="#c99544" text-anchor="middle">&#8594;</text>
+
+  <rect x="944" y="580" width="195" height="42" rx="8" fill="#151b24" stroke="#232c39"/>
+  <text x="1041" y="598" font-size="14" font-weight="bold" fill="#f2b447" text-anchor="middle">SIGN OFF</text>
+  <text x="1041" y="614" font-size="11.5" fill="#939dad" text-anchor="middle">whisper, trailing off</text>
+
+  <!-- footer -->
+  <text x="60" y="654" font-size="14" fill="#939dad">67,503 flashes &#183; 12,559 flares &#183; 11 years &#183; every claim shuffle-tested against its null</text>
+  <text x="1140" y="654" font-size="15" text-anchor="end" font-style="italic" font-family="Georgia,serif" fill="#f2b447">the Hollow Valley corpus</text>
+</svg>
+<figcaption class="fig" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+  <span>The findings, on one card.</span>
+  <button onclick="downloadCard()" style="background:none;border:1px solid #f2b447;color:#f2b447;
+    font:13px system-ui,sans-serif;padding:6px 14px;border-radius:8px;cursor:pointer">
+    Download as PNG (2400&#215;1350)</button>
+</figcaption>
+</figure>
+
+
+<p class="lede">Every night, pale lights rise over a valley and blink at each
+other. This corpus records eleven years of them — 67,503 flashes, timed to the
+millisecond, and nothing else: the flashes are identical, and all the
+information lives in the darkness between them. This page reports what that
+darkness contains: the lanterns have names, a grammar of summons and farewell,
+a five-night calendar, and a history you can read in their light. It also shows
+the part reports usually hide — the ten beautiful theories we killed along the
+way, and exactly what killed them.</p>
+
+
+<div class="box" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+  <span style="color:var(--muted);font-size:.9em">See it yourself — nothing here is take-our-word-for-it:</span>
+  <span style="display:flex;gap:10px;flex-wrap:wrap">
+    <a href="lanterns_browser.html" style="border:1px solid var(--amber-dim);border-radius:8px;padding:6px 14px;font-size:14px">&#9654; Explore the data (interactive)</a>
+    <a href="lanterns_data.zip" download style="border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:14px;color:var(--ink)">&#8681; Raw data (zip, 511&#8239;KB)</a>
+    <a href="lantern_findings.png" download style="border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:14px;color:var(--ink)">&#8681; Summary card (PNG)</a>
+  </span>
+</div>
+
+<h2 id="toc">Contents</h2>
+<div class="toc">
+  <a href="#data">1 · The data</a>
+  <a href="#method">2 · How to trust this page</a>
+  <a href="#letters">3 · The letter code that wasn't</a>
+  <a href="#smudge">4 · The "corrupted" flares that were words</a>
+  <a href="#words">5 · Finding the words</a>
+  <a href="#voice">6 · Whisper, speech, broadcast</a>
+  <a href="#register">7 · The intimate word and the public word</a>
+  <a href="#names">8 · The lanterns have names</a>
+  <a href="#houses">9 · Surnames: how your house says "four"</a>
+  <a href="#born">10 · Names are born and die</a>
+  <a href="#week">11 · The five-night week</a>
+  <a href="#liturgy">12 · The weekly liturgy</a>
+  <a href="#chronicle">13 · The chronicle: grief you can measure</a>
+  <a href="#graveyard">14 · The graveyard of dead theories</a>
+  <a href="#open">15 · What we still don't know</a>
+  <a href="#predictions">16 · Predictions</a>
+</div>
+
+<h2 id="data">1 · The data</h2>
+<p>The corpus is two logs of the same valley, deliberately lopsided:</p>
+<div class="box">
+<p><b>RIDGE</b> — watchers on a far ridge, 2005–2016. They see many lanterns at
+once and label each flare with its <em>glyph</em> (which of 35 recognized blink-patterns),
+its <em>region</em> (R1 or R2), its <em>cluster</em> (a lettered group of lanterns),
+and the <em>date</em>. They usually can't tell individual lanterns apart. 8,719 flares.</p>
+<p><b>LAMP</b> — a clockwork recorder placed right beside single lanterns for 48
+unlabeled nights. It knows exactly <em>which</em> lantern blinked and <em>when</em>
+(to the millisecond), but records no glyph labels. 3,840 flares.</p>
+<p>A <b>flare</b> is one lantern's burst of blinks. The flashes themselves are all
+identical — <em>all the information lives in the durations of darkness between
+them</em>. A flare with <i>n</i> flashes carries <i>n−1</i> dark gaps.</p>
+</div>
+<p>We verified the files against their manifest before anything else: SHA-256
+checksums match; 12,559 flares; 67,503 flashes; and every single flare has
+exactly <i>n−1</i> recorded gaps. The bookkeeping is sound.</p>
+
+<h2 id="method">2 · How to trust this page</h2>
+<p>Every claim below carries a confidence badge:</p>
+<p class="tierkey">
+<span class="badge bE">ESTABLISHED</span><span class="badge bS">STRONG</span><span class="badge bM">MODERATE</span><span class="badge bI">INTERPRETIVE</span><span class="badge bX">REFUTED</span><span class="badge bQ">INCONCLUSIVE</span>
+</p>
+<p><b>Established</b> means the claim survived a proper statistical test —
+usually a <em>permutation test</em> — and a search for confounds.
+<b>Interpretive</b> means "this is the story that fits, but the story itself
+wasn't independently testable." We will always tell you which is which.</p>
+
+<div class="math"><span class="t">The permutation test — the workhorse of this page</span>
+Suppose the data looks patterned. Is the pattern real, or would random data look
+just as patterned? A permutation test answers this with brute honesty:
+<b>shuffle the labels</b> (dates, names, categories) hundreds of times, recompute
+the same pattern-strength score on each shuffled copy, and see where the real
+data falls. If only ~1% of shuffles score as high as reality, we report
+<i>p ≈ 0.01</i>: a 1-in-100 chance of seeing this by luck. No distributional
+assumptions, no formulas to mis-apply — just the question "could chance do this?"
+asked directly.</div>
+
+<div class="math"><span class="t">Lift — "how much more often than chance"</span>
+If a word makes up 2% of all speech but 20% of speech in some context, its lift
+in that context is <b>10×</b>. Lift = (share in context) ÷ (share overall).
+Lift ≈ 1 means nothing is happening.</div>
+
+<p>Two working rules kept us honest. First, <b>anecdotes propose, distributions
+dispose</b>: a single striking example — and this corpus offers several — is
+never accepted without a whole-distribution test. Second,
+<b>hunt your own confounds</b>: the one time a beautiful result turned out to be
+an artifact of <em>how the data was collected</em>, we caught it and shot it
+ourselves (§11).</p>
+
+<h2 id="letters">3 · The letter code that wasn't <span class="badge bX">REFUTED</span></h2>
+<p>The first theory anyone reaches for: the blinking is a cipher for text. Its
+most seductive form says that when one lantern answers another, <em>the
+answering delay divided by a small unit (≈0.078 seconds) gives a whole number
+from 1–26, which reads as a letter A–Z</em>. Run the corpus through that rule
+and out come word-like strings — <code>GETY</code>, <code>RMMPHH</code> — which
+then invite a whole edifice of interpretation (unreadable proper names? a lost
+lexicon?). It looks like a decipherment. It is pareidolia, and here is how you
+prove that:</p>
+<div class="math"><span class="t">Testing quantization</span>
+If delays really are whole-number multiples of a unit <i>u</i>, then
+<i>delay ÷ u</i> should land near an integer nearly every time.
+For random delays, it lands within 0.15 of an integer about <b>30% of the time</b>
+by pure luck (the near-integer window covers ~30% of the number line).
+So: compute the fraction of delays with <i>|d/u − round(d/u)| &lt; 0.15</i>,
+and compare to 30%.</div>
+<p>The result: at the candidate unit of 0.078 s, <b>30.7%</b> of cross-beacon
+answer delays land near integers. That is chance, exactly. We also scanned
+<em>every</em> unit from 0.04 to 0.14 s in 0.0001 steps, and tried three
+different definitions of "answer delay" (end-to-start, start-to-start, turn
+boundaries). Best result anywhere: 34.5% — still statistically
+indistinguishable from luck.</p>
+<p>The theory's two prettiest confirmations dissolve on contact with the raw
+log. A 1.57 s delay reads cleanly as <code>T</code> (20 × 0.078); a 1.96 s delay
+reads as <code>Y</code> (25 × 0.078). We found those exact intervals in the
+data: they are the gaps between one lantern's blinks and its duet partner's
+blinks in the middle of night N-041 — two lanterns sharing a rhythm, one's
+beats landing between the other's. Not letters. Beats.</p>
+<div class="quote">The lesson, which shaped everything after: with enough freedom
+in your decoding rule, any noise will spell words for you. Every later claim on
+this page had to beat a shuffle-null before we believed it.</div>
+<details><summary>Code — the quantization test</summary>
+<pre>
+# delays between consecutive flares of DIFFERENT beacons, per night
+delays = []
+for night in nights.values():
+    for a, b in zip(night, night[1:]):
+        if a["beacon_id"] != b["beacon_id"]:
+            d = b["since_dusk_s"] - (a["since_dusk_s"] + a["flare_len_s"])
+            delays.append(d)
+window = [d for d in delays if 0.18 &lt;= d &lt;= 2.1]   # the letter-range window
+
+def near_integer_fraction(delays, u):
+    return sum(1 for d in delays
+               if abs(d/u - round(d/u)) &lt; 0.15) / len(delays)
+
+print(near_integer_fraction(window, 0.078))   # -&gt; 0.307  (chance = ~0.30)
+
+# exhaustive unit scan: minimize mean squared distance to integers
+best = min((sum((d/u - round(d/u))**2 for d in window), u)
+           for u in [0.04 + k*0.0001 for k in range(1000)])
+# best unit 0.0506 -&gt; near-integer fraction 0.345. Still chance.
+</pre></details>
+
+<h2 id="smudge">4 · The "corrupted" flares that were words <span class="badge bE">ESTABLISHED</span></h2>
+<p>The catalog marks 630 flares as <code>SMUDGE</code> — unclassified,
+unreadable. The natural assumption is recording noise, safe to discard. But
+noise strikes at random, and this didn't:</p>
+<table>
+<tr><th>flash count</th><th>flares</th><th>share marked SMUDGE</th></tr>
+<tr><td>5 flashes</td><td class="n">6,384</td><td class="n">4.4%</td></tr>
+<tr><td>3 flashes</td><td class="n">103</td><td class="n">20.4%</td></tr>
+<tr><td>6 flashes</td><td class="n">427</td><td class="n"><b>40.3%</b></td></tr>
+</table>
+<p>Recording noise does not select flares by their flash count. And when we
+examined the smudges directly, <b>556 of 630 contain no anomalous gap at all</b> —
+they're clean flares that simply didn't match any catalogued pattern. Clustering
+their gap profiles recovers coherent, repeated shapes: a 5-flash front-loaded
+form (×72), 5-flash trailing forms (×38), a six-flash version of the most common
+word (×47). The catalog's 25 recognized glyphs have holes — trailing-tail forms
+listed only for 6–10 flashes, front-loaded forms only for 3, 4, 7, 8 — and the
+smudge bin is precisely <em>the missing cells of that grid</em>.
+The alphabet is combinatorial: (gap-shape family) × (flash count). The rare
+combinations were thrown away as dirt.</p>
+<details><summary>Code — smudge anatomy and clustering</summary>
+<pre>
+# do smudges actually contain an anomalous gap?
+kinds = Counter()
+for fid, c in catalog.items():
+    if "SMUDGE" not in (c["glyph"] or ""): continue
+    g = gaps.get(fid, [])
+    med = statistics.median(g) if g else 0
+    if not g:                      kinds["one-flash"] += 1
+    elif any(x &lt; 0.25*med for x in g): kinds["near-zero gap"] += 1
+    elif any(x &gt; 4*med   for x in g): kinds["over-long gap"] += 1
+    else:                          kinds["no anomaly"]  += 1
+# -&gt; {'no anomaly': 556, 'near-zero': 29, 'over-long': 6, 'one-flash': 9}
+
+# greedy profile clustering of 5-flash smudges (gaps normalized by min gap)
+# largest clusters found:
+#   x72  [1.58, 1.32, 1.05, 1.06]   front-loaded  -&gt; the missing "5D"
+#   x38  [1.02, 1.11, 1.33, 1.79]+  trailing      -&gt; the missing "5i"
+#   x47  [2.36, 2.11, 1.25, 1.02, 1.28] (6-flash)  -&gt; "1+1+4"
+</pre></details>
+
+<h2 id="words">5 · Finding the words <span class="badge bE">ESTABLISHED</span></h2>
+<p>What is the natural "word" of lantern speech — the flare, or something bigger?
+Real language leaves statistical fingerprints, and we can check candidate
+tokenizations against them:</p>
+<div class="math"><span class="t">Zipf's law &amp; Heaps' law — the fingerprints of language</span>
+In any human language, the most common word is about twice as frequent as the
+second, three times the third… — on a log-log plot of frequency vs rank this is
+a straight line of slope ≈ −1 (<b>Zipf's law</b>). And as a text grows, its
+vocabulary grows like <i>N<sup>β</sup></i> with β ≈ 0.4–0.9
+(<b>Heaps' law</b>). Random noise and rigid codes fail these; language passes.</div>
+<p>Treating each flare as a token <b>fails</b> the screens (Zipf slope −1.90;
+Heaps β = 0.20; only 6% of vocabulary occurs once — a closed, code-like system).
+Treating each <b>run</b> — a consecutive repetition of the same flare-shape by
+the same lantern — as a token <b>passes all four</b>:</p>
+<table>
+<tr><th>screen</th><th>per-flare tokens</th><th>per-run tokens</th><th>natural language</th></tr>
+<tr><td>Zipf slope (fit R²)</td><td class="n">−1.90 (0.94)</td><td class="n"><b>−1.40 (0.96)</b></td><td class="n">≈ −1</td></tr>
+<tr><td>Heaps exponent β</td><td class="n">0.20</td><td class="n"><b>0.51</b></td><td class="n">0.4–0.9</td></tr>
+<tr><td>entropy drop given previous token</td><td class="n">1.19 bits</td><td class="n"><b>1.31 bits</b></td><td class="n">large</td></tr>
+<tr><td>hapax share (words used once)</td><td class="n">6%</td><td class="n"><b>26%</b></td><td class="n">25–70%</td></tr>
+</table>
+<p>So the unit of lantern speech is the run: <em>which shape, repeated how many
+times</em>. Everything below is built on run-tokens.</p>
+<p class="small">These screens come from a general decipherment toolkit we built
+and validated first on a synthetic language with known ground truth (88% part-of-speech
+recovery, 100% suffix recovery, 85% word-boundary F1) — so the instruments were
+calibrated before being pointed at the lanterns.</p>
+<details><summary>Code — building run-tokens and running the language screens</summary>
+<pre>
+# a "bout" = flares separated by silences &gt; 120 s; a run = same shape repeated
+for night in nights.values():
+    for bout in split_on_silences(night, gap=120):
+        tokens, prev_t = [], None
+        for c in bout:
+            if prev_t is not None and c["since_dusk_s"] - prev_t &lt; 0.15:
+                continue                     # collapse duet echo-doubles
+            tokens.append(str(c["shape_id"]) + ("F" if c["flourish"] else ""))
+            prev_t = c["since_dusk_s"]
+        runs = [f"{s}x{n}" for s, n in run_length_encode(tokens)]
+        corpus_lines.append(" ".join(runs))  # one bout = one "sentence"
+
+# then: python3 -m xenolang stats lamp_runs.txt
+#   Zipf slope -1.40 (R2 0.96) PASS | Heaps 0.51 PASS
+#   entropy drop 1.31 bits PASS     | hapax 26% PASS
+# same screens on per-flare tokens: -1.90 / 0.20 / 6%  FAIL
+</pre></details>
+
+<h2 id="voice">6 · Whisper, speech, broadcast <span class="badge bS">STRONG</span></h2>
+<p>The catalog splits several blink-patterns into numbered "variants"
+(<code>5R1</code>, <code>5R2</code>, <code>5R3</code>…) that share a gap-shape
+and differ in something unstated. The difference is <b>tempo</b> — and tempo is
+loudness. A lantern that holds its pattern longer is visible farther across the
+valley:</p>
+<div class="bars">
+  <div class="row"><span class="lbl">5R1 (murmured)</span><span class="track"><span class="fill" style="width:23%"></span></span><span class="val">0.33 s</span></div>
+  <div class="row"><span class="lbl">5R2 (spoken)</span><span class="track"><span class="fill" style="width:36%"></span></span><span class="val">0.51 s</span></div>
+  <div class="row"><span class="lbl">5R3 (broadcast)</span><span class="track"><span class="fill" style="width:80%"></span></span><span class="val">1.13 s</span></div>
+  <div class="row"><span class="lbl">4R1 (murmured)</span><span class="track"><span class="fill" style="width:17%"></span></span><span class="val">0.24 s</span></div>
+  <div class="row"><span class="lbl">4R2 (spoken/loud)</span><span class="track"><span class="fill" style="width:68%"></span></span><span class="val">0.96 s</span></div>
+</div>
+<div class="fig">Median flare duration of the same gap-shape, by "variant". One word, three volumes.</div>
+<p>Three independent observations agree. Lanterns lengthen their flares ~10%
+when another lantern is active nearby (the <em>Lombard effect</em> — raising
+your voice in company — which also occurs in humans, birds, and whales). Nights
+end quietly: across the 18 multi-bout LAMP nights, the final bout's mean flare
+length is <b>0.64 s vs 1.19 s</b> at night's start — 13 of 18 nights end at a
+whisper. And region R2's famously "unmixable dialect" largely dissolves under
+this lens: R2 speaks the same number-vocabulary, permanently in broadcast
+register (everything ≥ 1.1 s) — speech built to cross a valley, oversampled by
+ridge-top observers precisely because it carries.</p>
+<details><summary>Code — tempo of the "variants" and the whispered endings</summary>
+<pre>
+# median flare duration per glyph "variant" (RIDGE)
+for g in ("5R1","5R2","5R3","4R1","4R2"):
+    lens = [c["flare_len_s"] for c in catalog.values()
+            if c["log"]=="RIDGE" and c["glyph"]==g]
+    print(g, statistics.median(lens))
+# 5R1 0.33 | 5R2 0.51 | 5R3 1.13 | 4R1 0.24 | 4R2 0.96
+
+# nights end at a whisper: first vs last bout mean flare length
+# (18 LAMP nights with 3+ bouts)
+#   first bout 1.19 s | biggest middle bout 1.16 s | last bout 0.64 s
+#   13 of 18 nights end &lt;= 0.6 s
+</pre></details>
+
+<h2 id="register">7 · The intimate word and the public word <span class="badge bE">ESTABLISHED</span></h2>
+<p>Two five-flash words dominate the corpus: <code>1+1+3</code> (41% of all
+speech) and <code>5R1</code> (17%). They are not interchangeable. Using the LAMP
+log — where we know exactly who is present, minute by minute — we measured which
+word lanterns choose as a function of company:</p>
+<table>
+<tr><th>company (active lanterns ±5 min)</th><th>preference for 5R1 over 1+1+3</th></tr>
+<tr><td>alone / one partner</td><td class="n">0.27 – 0.28</td></tr>
+<tr><td>three</td><td class="n">0.16</td></tr>
+<tr><td>four</td><td class="n">0.08</td></tr>
+</table>
+<p>And the cleanest cut: the bonded pair b1 &amp; b2 (see §10), by themselves,
+choose the intimate word at ratio <b>0.32</b>; the moment others are present it
+drops to <b>0.14</b>. <code>5R1</code> is <em>tu</em>; <code>1+1+3</code> is
+<em>vous</em>. In the RIDGE log the same split appears as geography: cluster J
+speaks 73–85% commons-word — the valley's town square — while the household
+clusters run on the intimate form.</p>
+<details><summary>Code — register by company</summary>
+<pre>
+for night in nights.values():
+    times = [(c["since_dusk_s"], c["beacon_id"]) for c in night]
+    for c in night:
+        active = {b for t, b in times if abs(t - c["since_dusk_s"]) &lt;= 300}
+        na = len(active)
+        if c["shape_id"] in (2, 4):          # s2 = 1+1+3, s4 = 5R1
+            counts[na][c["shape_id"]] += 1
+# ratio s4/(s2+s4) by company:  1:0.27  2:0.28  3:0.16  4:0.08
+# pair-only vs others-present for b1/b2:  0.32 vs 0.14
+</pre></details>
+
+<h2 id="names">8 · The lanterns have names <span class="badge bE">ESTABLISHED</span></h2>
+<p>Thirty-five RIDGE lanterns carry individual labels. For each, we asked: does
+any word occur unusually often in that lantern's presence — <em>in other
+lanterns' speech</em>? The answer defines a name: a name is the word other people
+say when you're there.</p>
+<table>
+<tr><th>lantern</th><th>its signature word</th><th>said by others when it's present</th><th>when absent</th><th>lift</th></tr>
+<tr><td>5719</td><td>4R2</td><td class="n">386/1000</td><td class="n">35/1000</td><td class="n"><b>10.9×</b></td></tr>
+<tr><td>5722</td><td>4D</td><td class="n">45/1000</td><td class="n">4/1000</td><td class="n"><b>10.5×</b></td></tr>
+<tr><td>5720</td><td>4R2</td><td class="n">267/1000</td><td class="n">35/1000</td><td class="n">7.6×</td></tr>
+<tr><td>5726</td><td>5R1</td><td class="n">684/1000</td><td class="n">171/1000</td><td class="n">4.0×</td></tr>
+<tr><td>5561</td><td>7D1</td><td class="n">60/1000</td><td class="n">17/1000</td><td class="n">3.5×</td></tr>
+<tr><td colspan="5" class="small">…8 of 9 testable lanterns show the effect (range 1.7–10.9×); one failure (5727, 0.9×).</td></tr>
+</table>
+<p>Two corroborations. First, the mirror-image: after a lantern's final recorded
+date, its signature fades from everyone else's speech (5722's word: 13.4 →
+1.0 per 1000; 5561's: 39.8 → 3.8). Names follow their bearers out of the world.
+Second, dolphins do exactly this — "signature whistles" copied by others to
+address specific individuals — so the mechanism has a terrestrial precedent.</p>
+<p>Note the pair at the top: <b>5719 and 5720 share one name (<code>4R2</code>),
+one cluster (A), and identical first and last dates</b> (2009-02-05 →
+2014-04-16). Two lanterns, one name, arriving and vanishing together. Remember
+them; they carry the story in §13.</p>
+<details><summary>Code — the vocative test</summary>
+<pre>
+# signature = each beacon's highest-lift glyph (its share vs population share)
+# then: on dates the beacon is present vs absent, how often do OTHERS say it?
+for b, glyph in signatures.items():
+    for (date, cluster), flares in groups.items():
+        present = any(f["beacon_id"] == b for f in flares)
+        for f in flares:
+            if f["beacon_id"] == b: continue          # others only
+            bucket = "present" if present else "absent"
+            tally[b][bucket][f["glyph"] == glyph] += 1
+# result: 8/9 beacons, others use the signature 1.7-10.9x more when present
+</pre></details>
+
+<h2 id="houses">9 · Surnames: how your house says "four" <span class="badge bE">ESTABLISHED</span></h2>
+<p>The corpus contains five different renderings of a four-flash word. They are
+not free variation. Within each cluster's speech, one rendering dominates almost
+absolutely:</p>
+<table>
+<tr><th>cluster</th><th>4R1 (fast)</th><th>4R2 (slow)</th><th>4D (front-loaded)</th><th>1+31</th><th>1+32</th></tr>
+<tr><td>A (n=316)</td><td class="n">4%</td><td class="n"><b>93%</b></td><td class="n">1%</td><td class="n">2%</td><td class="n">0%</td></tr>
+<tr><td>F (n=251)</td><td class="n">16%</td><td class="n">1%</td><td class="n"><b>82%</b></td><td class="n">0%</td><td class="n">0%</td></tr>
+<tr><td>N (n=75)</td><td class="n">1%</td><td class="n">1%</td><td class="n">4%</td><td class="n">0%</td><td class="n"><b>93%</b></td></tr>
+<tr><td>V (n=40)</td><td class="n">5%</td><td class="n">2%</td><td class="n">5%</td><td class="n"><b>88%</b></td><td class="n">0%</td></tr>
+<tr><td>U (n=15)</td><td class="n"><b>67%</b></td><td class="n">13%</td><td class="n">7%</td><td class="n">13%</td><td class="n">0%</td></tr>
+<tr><td>ZZZ (n=28)</td><td class="n">0%</td><td class="n"><b>100%</b></td><td class="n">0%</td><td class="n">0%</td><td class="n">0%</td></tr>
+</table>
+<p>Each house renders the number in its own voice — a surname that isn't a
+separate word but a <em>manner</em>. The bottom row is the giveaway: cluster ZZZ,
+observed on a single night in 2016, says "four" 100% in <em>cluster A's</em>
+style. Why would the far side of the valley speak four in A's voice? Because —
+as §10 and §13 will show — <b>A's Four was standing there</b>.</p>
+<p>By contrast "five", the communal super-word, has only region-scale styles
+(the commons form <code>1+1+3</code>, R2's broadcast <code>5R3</code>, the
+household <code>5R1</code>) — exactly what you'd expect of a shared word (see
+§11 for what five most likely <em>is</em>).</p>
+
+<h2 id="born">10 · Names are born and die <span class="badge bE">ESTABLISHED</span></h2>
+<p>If <code>4R2</code> is truly the name of the 5719/5720 pair, then it should
+not exist in cluster A's speech before they arrive, should saturate it while
+they live there, and should leave when they leave. It does all three:</p>
+<div class="bars">
+  <div class="row"><span class="lbl">2005 (before)</span><span class="track"><span class="fill" style="width:0%"></span></span><span class="val">0%</span></div>
+  <div class="row"><span class="lbl">2008 (before)</span><span class="track"><span class="fill" style="width:0%"></span></span><span class="val">0%</span></div>
+  <div class="row"><span class="lbl">2009 (they arrive)</span><span class="track"><span class="fill" style="width:87%"></span></span><span class="val">43.3%</span></div>
+  <div class="row"><span class="lbl">2010 (resident)</span><span class="track"><span class="fill" style="width:54%"></span></span><span class="val">27.0%</span></div>
+  <div class="row"><span class="lbl">2014 (last year)</span><span class="track"><span class="fill" style="width:65%"></span></span><span class="val">32.6%</span></div>
+  <div class="row"><span class="lbl">2015 (they're gone)</span><span class="track"><span class="fill" style="width:35%"></span></span><span class="val">17.3%</span></div>
+  <div class="row"><span class="lbl">2016</span><span class="track"><span class="fill" style="width:0%"></span></span><span class="val">0%</span></div>
+</div>
+<div class="fig">Share of cluster A's speech that is the word 4R2, by year. The pair was resident 2009-02-05 to 2014-04-16.</div>
+<p>Meanwhile, across the valley in region R2, that same word sat at background
+level for years — 0.7%, 0.8%, 0.9%, 3.2%, 1.1% (2008–2012) — and then, on a
+single night in 2016, exploded to <b>20.7%</b>. Where? Cluster ZZZ. When? Two
+years after the pair left home. Their name didn't just die in A; it moved.</p>
+<p><b>A note on the LAMP log.</b> Its two main characters, b1 and b2, are an
+inseparable duetting couple who spend their nights exchanging a soft four-flash
+murmur. That murmur's tempo is 0.962 s — a dead match for <code>4R2</code>
+(0.963 s; the alternative reading <code>4R1</code> is 0.24 s, four times off).
+We rate "b1/b2 <em>are</em> the pair 5719/5720" only <span class="badge bM">MODERATE</span> —
+the LAMP nights can't be firmly dated — but the close-range log is, at minimum,
+a bonded pair murmuring a shared slow-four name to each other, which is exactly
+what the RIDGE data says the 4R2 pair would sound like up close.</p>
+<details><summary>Code — a name's lifetime, and the pace check on the pair's murmur</summary>
+<pre>
+# share of cluster A's speech that is 4R2, by year
+for year, bag in cluster_A_by_year.items():
+    print(year, bag["4R2"] / sum(bag.values()))
+# 2005 0.000 (n=10) | 2008 0.000 (n=27) | 2009 0.433 | 2010 0.270
+# 2014 0.326 | 2015 0.173 | 2016 0.000
+# ... and 4R2 in region R2 by date: &lt;=3.2% (2008-2012), 20.7% (2016 ZZZ night)
+
+# is LAMP's backchannel s0 the word 4R1 or 4R2?  decide by tempo:
+#   RIDGE 4R1 median 0.242 s | RIDGE 4R2 median 0.963 s
+#   LAMP  s0  median 0.962 s | b1/b2's own s0: 0.969 s   -&gt; 4R2, exactly
+</pre></details>
+
+<h2 id="week">11 · The five-night week <span class="badge bE">ESTABLISHED</span></h2>
+<p>The LAMP log contains ceremonial nights reproduced elsewhere to the
+millisecond, and their spacings kept whispering one number: nights 15→20, 16→21,
+17→22, 18→23 — all five apart. Hypothesis: the valley runs on a five-night
+calendar. The RIDGE log has real dates, so this is decisively testable.</p>
+<div class="math"><span class="t">The test, in full</span>
+Assign each RIDGE date its residue <i>(days since epoch) mod 5</i> — its
+"day of the lantern week". Pool the glyphs spoken on each residue into five
+distributions. Measure how different the five distributions are, using
+<b>Jensen–Shannon divergence</b> (an information-theoretic distance between
+probability distributions: 0 = identical, larger = more different; symmetric
+and bounded, unlike raw KL divergence). Then the permutation null: shuffle which
+date gets which residue — <em>keeping each date's bag of glyphs intact</em> —
+300 times, and ask how often shuffled calendars produce as much day-to-day
+difference as the real one.</div>
+<table>
+<tr><th>period tested</th><th>observed divergence</th><th>shuffle-null mean</th><th>p-value</th></tr>
+<tr><td><b>5 nights</b></td><td class="n"><b>0.1768</b></td><td class="n">0.1188</td><td class="n"><b>≈ 0.010</b></td></tr>
+<tr><td>7 nights (the human week — control)</td><td class="n">0.1490</td><td class="n">0.1536</td><td class="n">0.52</td></tr>
+</table>
+<p>The five-night week is real; the seven-night week is noise. This also finally
+explains the corpus's strangest fact — why "five" is the super-word, spoken in
+every register and tempo, ~60% of everything said: <b>five is the name of the
+cycle itself</b>. (That last sentence is the one <span class="badge bI">INTERPRETIVE</span>
+step in this section; the periodicity itself is measured.)</p>
+<p><b>The confound we caught.</b> The raw day-profiles suggested region R2
+"broadcasts on days 1–2." Then we checked the observation schedule: clusters K,
+P and ZZZ were <em>only ever observed</em> on residues 1–2. That effect was the
+watchers' rota, not the lanterns — withdrawn. The effects we kept are the ones
+that hold <em>within</em> single clusters, immune to that confound:</p>
+<ul>
+<li><b>Day 3 is the gathering day.</b> Within cluster F, "summons"-type words
+(§13) collapse from 35% (day 0) to <b>1%</b> (day 3, n=351): when everyone is
+home, no one needs calling. Cluster V's public partitioned forms peak the same
+day (22%).</li>
+<li><b>Day 0 is the scattered day</b> — peak summoning.</li>
+<li><b>Day 4</b>: cluster J runs 91% commons-word.</li>
+</ul>
+<details><summary>Code — the calendar permutation test</summary>
+<pre>
+bags = {date: Counter(glyphs spoken that date)}          # per-date bags
+def divergence(period, residue_of):                      # mean pairwise JS
+    classes = defaultdict(Counter)
+    for d, bag in bags.items():
+        classes[residue_of[d]].update(bag)
+    return mean_pairwise_jensen_shannon(classes.values())
+
+true_res = {d: (d - EPOCH).days % 5 for d in bags}
+observed = divergence(5, true_res)                       # 0.1768
+null = []
+for _ in range(300):                                     # shuffle residues,
+    vals = list(true_res.values()); random.shuffle(vals) # keep bags intact
+    null.append(divergence(5, dict(zip(bags, vals))))
+p = sum(1 for x in null if x &gt;= observed) / len(null)    # ~0.010
+</pre></details>
+
+<h2 id="liturgy">12 · The weekly liturgy <span class="badge bE">ESTABLISHED</span></h2>
+<p>Once you know there is a week, the reproduced nights snap into place as a
+<em>program</em>. LAMP nights 15, 16 and 17 recur one week later as nights 20,
+21, 22 — same performers, timing correlated at ≥ 0.99998, blink-shape sequences
+86–100% identical. Night 18's program also recurs in night 23 — but with the
+<b>performers changed</b> (the b1+b2 duet's material re-performed by b2+b3, on
+new timing): the run-sequence fingerprint <code>s6 · s14×2 · s11 · s4×4 · s2 ·
+s4×3 · s2 · s4×6</code> is identical while the clock correlation is −0.03. A
+program slot handed down the chain, the shared member as carrier. Night 19/24
+matches nothing: one night in five is unscripted, ordinary conversation (it is
+statistically indistinguishable from other nights on vocabulary sharing and
+dialogue rates — just never a rerun).</p>
+<p>So the ceremonial week: <b>four nights of offices, one night off.</b> A
+night's internal arc is equally stereotyped (transcript-verified across nights):
+loud solo announcement → duet with a neighbor, regulated by tiny 0.13 s
+"your-turn" cue flares → a community bout with ordered cascades of responders →
+and a whispered closing song, alone. Those closing songs are fixed texts: night
+N-016's <code>9i×3 · 8i×3 · 5R1×7</code> reappears note-for-note from a
+<em>different lantern</em> five nights later, four-plus hours after dusk, at
+whisper volume both times.</p>
+<p>If you want a single modern analogy for what most of this traffic <em>is</em>:
+an amateur-radio <b>check-in net</b>. The great bulk of the corpus is not
+message-passing but presence-keeping — announce yourself (the trill), greet
+whoever is on the air by their callsign-name, call for the stations that
+haven't checked in (the front-loaded summons), relay the scheduled traffic down
+the chain (the office handoffs), and sign off at a whisper. The valley even has
+its equivalent of a beacon station: region R2, transmitting its slow
+identification pattern all night, every night, in broadcast register. The
+ceremonies and songs are the scheduled programs; the net is the medium they
+ride on.</p>
+<details><summary>Code — verbatim reruns and the handoff</summary>
+<pre>
+# timing correlation between night k and night k+5:
+# correlate the sequences of inter-flare intervals
+def timing_corr(a, b):
+    dx = diffs([c["since_dusk_s"] for c in nights[a]])
+    dy = diffs([c["since_dusk_s"] for c in nights[b]])
+    return pearson(dx[:min(len(dx),len(dy))], dy[:min(len(dx),len(dy))])
+
+# N-015/020 0.99998 | N-016/021 1.00000 | N-017/022 1.00000
+# N-018/023 -0.031  | N-019/024 0.166
+# shape-sequence identity: 86% / 100% / 99% / 55% / 29%
+
+# the N-018 -&gt; N-023 handoff: identical run fingerprint,
+#   s6 s14x2 s11 s4x4 s2 s4x3 s2 s4x6
+# performers b1+b2 (N-018) -&gt; b2+b3 (N-023): same office, new celebrants
+</pre></details>
+
+<h2 id="chronicle">13 · The chronicle: grief you can measure</h2>
+<h3>The mourning correlation <span class="badge bE">ESTABLISHED</span></h3>
+<p>Among the shape families is the <code>i</code>-series — flares
+whose final gap stretches out, a trailing-off. Behaviorally these are
+<b>parting words</b>: in LAMP they are 4.4× enriched in a lantern's final ten
+minutes of the night (its own departure — not others'), and they are the entire
+vocabulary of the whispered closing songs. If they're truly funereal, they
+should predict disappearance at the population scale. They do:</p>
+<div class="math"><span class="t">Spearman rank correlation</span>
+Rank the 19 (cluster, year) samples by parting-word share; rank them by
+attrition (fraction of that year's labeled lanterns never seen in any later
+year); measure how the rankings agree (ρ = +1 perfect, 0 none). Then permute
+one ranking 5,000 times for the null.</div>
+<p>Result: <b>ρ = 0.298, permutation p ≈ 0.012</b>. Years of heavy parting-speech
+are years whose lanterns vanish. The two case studies at the top of the table
+are the corpus's emotional spine: <b>F-2005</b> — where the elderly lantern
+5703's presence-nights run 26%, 17%, 37%, and finally <b>65% parting-vocabulary
+on its last night ever</b> (on nights it is absent: ~0%); and <b>A-2014</b> —
+the bonded pair's final year at home: <b>20.8% parting-speech, then 100%
+attrition</b>. They spent a year saying goodbye, and then they crossed the
+valley (§10). Caveats, honestly: attrition is censored by observation gaps and
+by the record's end; n = 19 is modest. The direction, the p-value, and the case
+studies all agree.</p>
+<details><summary>Code — parting-words at departures, and the mourning correlation</summary>
+<pre>
+# LAMP: are trailing-tail (i) flares enriched at a lantern's own departure?
+# zone = last 10 minutes of that beacon's night
+#   mid-night 1.0% | others departing 1.1% | OWN departure 4.4%  (4.4x)
+
+# RIDGE: cluster-year parting share vs attrition
+rows = []
+for (cluster, year), beacons in labeled_by_cluster_year.items():
+    i_share = i_glyphs[(cluster, year)] / total[(cluster, year)]
+    lost = sum(1 for b in beacons if last_year[b] == year) / len(beacons)
+    rows.append((i_share, lost))
+rho = spearman(rows)                        # 0.298, n = 19
+# permutation null (5000 shuffles of the attrition column): p ~ 0.012
+# top rows: F-2005 20.9%/33% (5703 dying) | A-2014 20.8%/100% (the pair's last year)
+# honest counterexample: U-2009 27.5% i-share, 0% attrition (n=2 beacons)
+</pre></details>
+<h3>The calling season <span class="badge bS">STRONG</span></h3>
+<p>The mirror of <code>i</code> is <code>D</code>: front-loaded flares, a shout's
+attack. Watch the number seven move through cluster F across eleven years:</p>
+<table>
+<tr><th>year</th><th>7-as-parting (7i)</th><th>7-as-summons (7D)</th><th>context</th></tr>
+<tr><td>2005</td><td class="n"><b>7.8%</b></td><td class="n">0.3%</td><td>5703's dying season</td></tr>
+<tr><td>2008–09</td><td class="n">0.0%</td><td class="n">0.0%</td><td>silence</td></tr>
+<tr><td>2010</td><td class="n">2.0%</td><td class="n"><b>23.4%</b></td><td>the family's final season</td></tr>
+</table>
+<p>The same number: farewelled in 2005, silent for four years, then <em>shouted</em>
+— 23% of everything the cluster said. Two lanterns' personal vocabularies
+transformed to do it (5561: five years of 98% commons-speech, then suddenly 50%
+seven-forms; 5722: six years of pure <code>4D</code>, then half its speech
+<code>7D1</code>). On 2010-03-04 — the fullest gathering in the entire record,
+all five labeled members present, 322 flares — the summons-forms fall to 8%.
+There is no one left to call. It is the family's last night in the record.</p>
+<p>Two readings survive the data: they were summoning their dead (a séance for
+the one farewelled in 2005), or seven designates a living member and 2010 was a
+season of calling the scattered home before leaving. We could not separate
+these — but the <em>behavioral</em> sequence (farewell-era → silence →
+calling-era → one full house with no calls → gone) is measured, not imagined.
+And 5722's six flat years of <code>4D</code> mean that, under either reading,
+one lantern spent six years calling a Four who never came.</p>
+<h3>The crossing, the vigil, and the answer <span class="badge bS">STRONG</span></h3>
+<p>Three scenes close the chronicle. (1) <b>The crossing</b>: the pair's name
+erupting from ≤3% background to 20.7% of a single 2016 night in ZZZ, across a
+regional boundary that vocabulary statistics say is never otherwise crossed.
+(2) <b>The vigil</b>: 2015, cluster A standing empty; a never-before-seen
+lantern delivers 371 flares of pure commons-speech in one night — and the
+unlabeled locals around it say <code>3D</code>, "the summons of Three," thirty
+times. (3) <b>The answer</b>: 2016-04-24, a new lantern appears in A and says
+exactly one thing, seven times: <code>3D</code>. Someone was called for years.
+Someone came.</p>
+
+<h2 id="graveyard">14 · The graveyard of dead theories <span class="badge bX">REFUTED ×10</span></h2>
+<p>A decipherment is only as credible as the alternatives it has killed. Here is
+every rival theory we took seriously, and the number that ended it. Note how
+many are <em>ours</em> — this is what "statistically careful" means in practice.</p>
+
+<div class="box kill"><h3>1 · The delay-letter code</h3>
+Delays quantize at chance (30.7% vs ~30%) under every unit and every delay
+convention; its prettiest examples are duet beats. §3.</div>
+
+<div class="box kill"><h3>2 · Run lengths as letters (A=1 … Z=26)</h3>
+Seductive start: night N-041 opens with runs of 7 and 5 — "G, E…" — matching the
+letter-code theory's most famous word. The distribution test executed it: 71% of all runs
+have length 1, so the "text" is 71% letter A; its letter-frequency profile has
+cosine similarity 0.36 to English — <em>worse than uniform random</em> (0.55).
+The anecdote was a trap; the distribution was the truth.</div>
+
+<div class="box kill"><h3>3 · Gap patterns as Morse code</h3>
+Short/long gaps do form binary strings, but the shapes corresponding to Morse's
+most common letters (E = a single short, T = a single long: 2-flash flares) are
+nearly absent from the corpus (6 and 9 occurrences out of 12,559). No natural
+message has almost no E's and T's.</div>
+
+<div class="box kill"><h3>4 · Flash counts as digits (beacon IDs, dates)</h3>
+Beacon 5981's speech should be full of 9s, 8s and 1s. It is 96% <code>1+1+3</code>
+(fives). Dated glyph-bags show no digit correlation with day, month or year.</div>
+
+<div class="box kill"><h3>5 · Flash count = attendance census</h3>
+"The lanterns count each other" — elegant, explains the night-level sharedness.
+Measured: correlation between lanterns present and the number spoken = <b>−0.147</b>;
+per-flare, the mean company is flat (≈3.2) across every flash count from 3 to 12.</div>
+
+<div class="box kill"><h3>6 · Flash count = the moon's age</h3>
+Explains night-sharedness, drifting content, even the 17–24 "trills". Computed
+real lunar age for all 61 RIDGE dates: matches occur <em>only</em> when the moon
+happens to be ≈5 days old — i.e., the ubiquitous five-flash word matching by
+coincidence. Mean match share 0.117. An artifact wearing a theory's clothes.</div>
+
+<div class="box kill"><h3>7 · Numbers as map coordinates</h3>
+If numbers named places, physically adjacent clusters should prefer adjacent
+numbers. The co-observation graph is too sparse to build a geography, and every
+cluster's mean "high number" sits in the same band (7.0–8.4). Nothing to find.</div>
+
+<div class="box kill"><h3>8 · Trills echo the partner's count</h3>
+"You blinked 17 times — <em>seventeen!</em>" Tested all 153 trills against the
+run lengths preceding them: <b>1 match</b>. Dead on arrival.</div>
+
+<div class="box kill"><h3>9 · Partitions report group composition</h3>
+"<code>2+3</code> = we are five: two here, three yonder." Read out all 29
+utterances of <code>2+3</code> against who was actually assembled: compositions
+of 2, 3, and 8 lanterns, grouped every which way. No correspondence.</div>
+
+<div class="box kill"><h3>10 · Our own case-grammar (productive inflection)</h3>
+We believed for a while that any number could be inflected: <i>5</i> → <i>5i</i>
+"farewell-five". The clean test: departing lanterns whose whole night is
+five-stems should say <code>5i</code>. They say <code>8i</code> and <code>9i</code>
+(15 of 21 partings) — fixed parting words, not inflections. Match to own stem:
+4.8% vs null 4.5%, p = 0.62. We demoted our own theory; the parting words are a
+small fixed vocabulary (the same words as the litanies), and the D-series is
+partly entangled with house-style (F's four <em>is</em> <code>4D</code>).</div>
+
+<div class="box kill"><h3>11 · (Confound, caught) R2's "broadcast days"</h3>
+Withdrawn before adoption: clusters K/P/ZZZ were only observed on week-residues
+1–2, so their day-profile was the observation rota, not lantern behavior.
+The day-effects we kept (§11) are within-cluster and immune to this.</div>
+
+<h2 id="open">15 · What we still don't know <span class="badge bQ">INCONCLUSIVE</span></h2>
+<ul>
+<li><b>Whether the parting number promises a return date.</b> One exact hit (a
+lantern parting on "12" returned after exactly 12 nights), one near (7 → 6
+nights), several misses; n ≈ 11. Tantalizing; unproven.</li>
+<li><b>What <code>2+3</code> means.</b> A southern (V/S) five-form, weakly
+arrival-linked (2.2×, n=17).</li>
+<li><b>What the numbers count.</b> That they function as designations is
+established (§8–10); their etymology — birth order? founding order? something
+stranger? — is beyond this data.</li>
+<li><b>Absolute dates for the LAMP nights</b> (the yearly vocabulary profiles of
+2007 and 2015 are nearly identical, so profile-dating is degenerate).</li>
+<li><b>Beacon 9999, cluster ZZZ, and the one "59871?"</b> — end-marker
+bookkeeping, or entities. </li>
+</ul>
+
+<h2 id="predictions">16 · Predictions</h2>
+<p>A finding that risks nothing predicts nothing. To keep this analysis honest,
+we register the following statements in advance, with confidences — each one
+falsifiable if fuller information about the valley ever surfaces:</p>
+<table>
+<tr><th>#</th><th>registered prediction</th><th>confidence</th></tr>
+<tr><td>1</td><td>No letter code exists in the answer delays; the quantization null will replicate at any unit</td><td class="n">95%</td></tr>
+<tr><td>2</td><td>Nightly content is genuinely driven by a five-night cycle</td><td class="n">90%</td></tr>
+<tr><td>3</td><td><code>8i</code>/<code>9i</code> are fixed farewell/elegy vocabulary; the N-016 song is a fixed cultural text</td><td class="n">80%</td></tr>
+<tr><td>4</td><td><code>4R2</code> designates the 5719/5720 pair, who relocated across the valley to ZZZ</td><td class="n">75%</td></tr>
+<tr><td>5</td><td>SMUDGE flares are legitimate rare vocabulary, not noise</td><td class="n">70%</td></tr>
+<tr><td>6</td><td>Numbers function as designators; shape and tempo carry house, mood and projection</td><td class="n">70%</td></tr>
+<tr><td>7</td><td>The F-2010 season reflects a real mourning / leave-taking event</td><td class="n">70%</td></tr>
+<tr><td>8</td><td><code>1+1+3</code> is the communal/default word of region R1</td><td class="n">65%</td></tr>
+<tr><td>9</td><td>LAMP b1/b2 are a bonded pair — most likely 5719/5720 themselves</td><td class="n">55%</td></tr>
+<tr><td>10</td><td>At least one meaning-layer in this corpus remains undiscovered by this analysis</td><td class="n">60%</td></tr>
+</table>
+
+<hr>
+<p class="small">Method &amp; provenance: all analysis in dependency-free Python
+against <code>flares.csv</code> and <code>catalog.csv</code> (SHA-256 verified
+against the bundled manifest); loaders and one-off analysis scripts in
+<code>lantern_work/</code>; general-purpose decipherment screens from the
+<code>xenolang</code> toolkit, calibrated on a synthetic language with known
+ground truth before use here. Every p-value on this page is a permutation
+p-value — no parametric assumptions anywhere. Claims are stated with their
+strongest counter-evidence attached, because a theory that hides its opposition
+isn't a finding, it's a wish. 🏮</p>
+
+</div>
+
+<script>
+function downloadCard(){
+  var svg = document.getElementById('lantern-card');
+  var xml = new XMLSerializer().serializeToString(svg);
+  var blob = new Blob([xml], {type:'image/svg+xml;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var img = new Image();
+  img.onload = function(){
+    var c = document.createElement('canvas');
+    c.width = 2400; c.height = 1350;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, 2400, 1350);
+    var a = document.createElement('a');
+    a.download = 'lantern_findings.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+</script>
+</body>
+</html>
