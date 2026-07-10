@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Comma Lens — midi → any tuning</title>
+<style>
+:root{
+ --bg:#060b0c;--panel:#0c1517;--panel2:#101b1e;--line:#1d3034;
+ --ink:#d9f2ee;--dim:#6f958f;--hi:#5fd3c4;--gold:#8ff0e2;--warn:#ff8c5a;--orig:#c9a86a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:radial-gradient(120% 90% at 50% 0%,#0a1517 0%,var(--bg) 60%);
+ color:var(--ink);font:14px/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;min-height:100%}
+main{max-width:640px;margin:0 auto;padding:14px 12px 56px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:2px 2px 12px}
+h1{margin:0;font:italic 600 31px/1 Palatino,"Iowan Old Style","Palatino Linotype",Georgia,serif;letter-spacing:.5px;
+ background:linear-gradient(100deg,var(--gold),var(--hi) 55%,#3f9e8f);-webkit-background-clip:text;background-clip:text;color:transparent}
+header .sub{color:var(--dim);font-size:11px;letter-spacing:.4px;text-align:right;line-height:1.4}
+canvas{display:block;width:100%;border:1px solid var(--line);border-radius:12px;background:#080f10}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:stretch}
+button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;
+ padding:9px 12px;cursor:pointer;touch-action:manipulation}
+button:active{transform:translateY(1px)}
+button:focus-visible{outline:2px solid var(--hi);outline-offset:1px}
+button.primary{background:linear-gradient(160deg,#103832,#0a221f);border-color:#2b6b5f;color:var(--gold);
+ font-weight:600;padding:10px 18px;letter-spacing:.6px;min-width:120px}
+button.on{border-color:var(--hi);color:var(--gold);box-shadow:0 0 0 1px #2b6b5f inset}
+button:disabled{opacity:.45}
+#readout{color:var(--dim);font-size:11.5px;margin-top:9px;min-height:16px;letter-spacing:.2px}
+#warn{color:var(--warn);font-size:11.5px;min-height:15px;margin-top:2px}
+.ctls{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:12px}
+.ctl{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px 7px}
+.ctl label{display:flex;justify-content:space-between;gap:6px;color:var(--dim);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase}
+.ctl label b{color:var(--gold);font-weight:600;white-space:nowrap}
+.ctl select{width:100%;margin-top:7px;padding:6px 8px;background:var(--panel2)}
+input[type=range]{width:100%;margin:9px 0 3px;accent-color:var(--hi);height:22px}
+.seg{display:flex;gap:4px;margin-top:8px;margin-bottom:3px;flex-wrap:wrap}
+.seg button{flex:1;padding:7px 2px;font-size:12px;border-radius:7px;background:var(--panel2);min-width:34px}
+.wide{grid-column:1/-1}
+.filebtn{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;
+ padding:9px 12px;cursor:pointer;display:inline-flex;align-items:center;position:relative;overflow:hidden;touch-action:manipulation}
+.filebtn:active{transform:translateY(1px)}
+.filebtn input{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;font-size:80px;cursor:pointer}
+textarea{width:100%;box-sizing:border-box;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+ border-radius:8px;font:12px/1.4 ui-monospace,Menlo,monospace;padding:8px;margin:8px 0 6px}
+details{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+ padding:10px 13px;color:var(--dim);font-size:12.5px}
+summary{color:var(--gold);cursor:pointer;letter-spacing:.4px}
+details p{margin:9px 0}
+code,details b{color:var(--gold);font-style:normal}
+details i{color:var(--ink)}
+#report{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+ padding:10px 13px;font-size:12px;line-height:1.6;display:none}
+#report .k{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.6px;margin-right:6px}
+#report b{color:var(--gold);font-weight:600}
+#report .why{color:var(--dim)}
+#maptab table{border-collapse:collapse;width:100%;margin-top:8px;font-size:11px}
+#maptab th,#maptab td{padding:3px 6px;text-align:right;border-bottom:1px solid var(--line);color:var(--ink)}
+#maptab th{color:var(--dim);font-weight:400;text-transform:uppercase;font-size:9.5px;letter-spacing:.5px}
+#maptab td:first-child,#maptab th:first-child{text-align:left}
+#maptab td.pick{color:var(--gold)}
+@media (max-width:520px){.ctls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <h1>Comma Lens</h1>
+ <div class="sub">translate 12-tone midi into any equal temperament<br>carrying over what the notes mean, not where they were</div>
+</header>
+
+<canvas id="roll"></canvas>
+
+<div class="row">
+ <button id="playC" class="primary">&#9654; converted</button>
+ <button id="playO">&#9654; original 12-tet</button>
+ <button id="loopbtn">loop</button>
+ <button id="wav">&#10515; wav</button>
+</div>
+<div id="readout"></div><div id="warn"></div>
+
+<div class="row">
+ <label class="filebtn" for="midifile">&#9836; import midi<input type="file" id="midifile"></label>
+ <button id="mididemo">demo seq</button>
+ <button id="mideject" style="display:none">eject</button>
+</div>
+<details><summary>picker won't open? paste midi as base64</summary>
+ <textarea id="b64" rows="3" placeholder="paste base64 of a .mid file (data: URIs fine) &mdash; e.g. from `base64 -w0 song.mid`"></textarea>
+ <button id="b64load">load pasted midi</button>
+</details>
+
+<div class="ctls">
+ <div class="ctl wide"><label>target tuning <b id="v_edo"></b></label><div class="seg" id="edoseg"></div></div>
+ <div class="ctl wide"><label>conversion <b id="v_mode"></b></label><div class="seg" id="modeseg"></div></div>
+ <div class="ctl"><label>instrument <b id="v_inst"></b></label><select id="instsel"></select></div>
+ <div class="ctl"><label>partials <b id="v_match"></b></label><div class="seg" id="matchseg"></div></div>
+ <div class="ctl"><label>melody level <b id="v_mvol"></b></label><input id="mvol" type="range" min="0" max="1" step="0.01"></div>
+ <div class="ctl"><label>drums level <b id="v_dvol"></b></label><input id="dvol" type="range" min="0" max="1" step="0.01"></div>
+</div>
+
+<div id="report"></div>
+<details id="mapwrap" style="display:none"><summary>interval map (tonic-relative)</summary><div id="maptab"></div></details>
+
+<details><summary>what is happening here</summary>
+<p>A midi file only records <i>which piano key</i> was pressed &mdash; and 12-tet is a lossy projection. It tempers out a kernel of commas (<code>81/80</code>, <code>128/125</code>, &hellip;), collapsing intervals that other tunings keep distinct: the same four keys could mean a <code>5/4</code> third, an <code>81/64</code> third, or a <code>9/7</code>. So "convert this melody to 19-edo" is underdetermined until you pick an <b>interpretation</b>. This page offers three, and an auto mode that scores them:</p>
+<p><b>direct</b> &mdash; each note goes to the nearest step of the target: <code>round(semitones &middot; edo/12)</code>. Preserves the literal cents of the melody; ignores its grammar. The honest choice for atonal material.</p>
+<p><b>fifths</b> &mdash; the regular-temperament mapping. Every 12-tet note is respelled on the chain of fifths (key-aware: the detected key decides F&#9839; vs G&#9837;), then <i>fifth</i> and <i>octave</i> are sent to the target's best fifth and octave &mdash; a homomorphism on the &#10216;2,3&#10217; lattice. A major third stops being "4 keys" and becomes what it structurally is: four fifths up, two octaves down. In 19 or 31-edo that lands meantone-flat and sweet; in 22-edo it lands superpyth-sharp. Function is preserved; color follows the tuning's own logic.</p>
+<p><b>just</b> &mdash; the harmonic interpretation. Each pitch class is read as a 5-limit ratio against the detected tonic (<code>5/4</code>, <code>3/2</code>, <code>16/15</code>&hellip;) and the target step nearest that ratio is chosen. Anchoring to the tonic rather than chaining local intervals is deliberate: chained-JI drifts by a comma around progressions like I&ndash;vi&ndash;ii&ndash;V (the comma pump), and a fixed anchor absorbs that instead of accumulating it.</p>
+<p><b>auto</b> detects the key (Krumhansl&ndash;Schmuckler profile correlation, duration-weighted). Low confidence &rArr; direct. Otherwise it computes, for every note, how far each candidate mapping lands from the just intervals the tonal music implies, and picks the smallest &mdash; with a small structural bonus for <i>fifths</i>, which stays coherent under transposition and modulation.</p>
+<p><b>Timbre:</b> consonance is not in the intervals alone &mdash; it is the interaction of the tuning with the <i>spectrum</i> (Sethares). The instrument here is a partial-generator, and <b>matched</b> snaps every partial to a power of the target's step, so the beating that makes "out of tune" sound out of tune lines up with the tuning itself. Auto keeps harmonic partials when the edo approximates harmonics 3&middot;5&middot;7 well, and matches them when it doesn't (13, 16&hellip;) &mdash; that is what makes a 13-edo triad genuinely consonant. The <i>original</i> button always plays literal 12-tet with harmonic partials, for honest A/B.</p>
+<p><b>What cannot survive:</b> enharmonic puns. A diminished seventh that resolves two ways, an augmented sixth reread as a dominant seventh &mdash; those are uses of 12's kernel, and a tuning that doesn't temper the same commas must choose one reading. The fifth-chain spelling makes that choice for you (per key), which is the best any translation can do.</p>
+</details>
+</main>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+function hexA(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+ return 'rgba('+r+','+g+','+b+','+a+')';}
+function warn(m){$('warn').textContent=m;}
+
+/* ---------- midi parse (tempo-map aware) ---------- */
+const GMDRUM={35:0,36:0,38:1,40:1,37:2,41:2,43:2,45:2,47:2,48:2,50:2,75:2,76:2,77:2,
+ 42:3,44:3,46:3,49:3,51:3,52:3,53:3,54:3,55:3,57:3,59:3,69:3,70:3,82:3,
+ 56:4,60:4,61:4,62:4,63:4,64:4,65:4,66:4};
+function parseMIDI(buf){
+ let u8=new Uint8Array(buf);let pos=0;
+ const find=(arr,s)=>{
+  outer:for(let i=0;i+s.length<=arr.length;i++){
+   for(let j=0;j<s.length;j++)if(arr[i+j]!==s.charCodeAt(j))continue outer;
+   return i;
+  }
+  return -1;
+ };
+ const at=find(u8,'MThd');
+ if(at<0)throw new Error('no midi header found in file');
+ if(at>0)u8=u8.subarray(at);
+ const rd32=()=>{const v=((u8[pos]<<24)|(u8[pos+1]<<16)|(u8[pos+2]<<8)|u8[pos+3])>>>0;pos+=4;return v;};
+ const rd16=()=>{const v=(u8[pos]<<8)|u8[pos+1];pos+=2;return v;};
+ const tag=()=>{const s=String.fromCharCode(u8[pos],u8[pos+1],u8[pos+2],u8[pos+3]);pos+=4;return s;};
+ if(tag()!=='MThd')throw new Error('not a standard midi file');
+ const hl=rd32();rd16();const ntrk=rd16(),div=rd16();pos+=hl-6;
+ if(div&0x8000)throw new Error('SMPTE timing not supported');
+ const tpq=div||480;
+ const notes=[],drums=[],tempos=[];
+ let maxTick=0;
+ for(let tr=0;tr<ntrk&&pos+8<=u8.length;tr++){
+  if(tag()!=='MTrk'){pos+=rd32();continue;}
+  const len=rd32(),end=pos+len;
+  let tick=0,run=0;
+  const open={};
+  while(pos<end){
+   let dt=0,b;
+   do{b=u8[pos++];dt=(dt<<7)|(b&0x7f);}while(b&0x80);
+   tick+=dt;if(tick>maxTick)maxTick=tick;
+   let st=u8[pos];
+   if(st<0x80){if(!run)throw new Error('malformed running status');st=run;}
+   else{pos++;run=(st<0xF0)?st:0;}
+   const hi=st&0xf0,ch=st&0x0f;
+   if(hi===0x90||hi===0x80){
+    const p=u8[pos++],v=u8[pos++],key=ch*128+p;
+    if(hi===0x90&&v>0){(open[key]=open[key]||[]).push({tick,vel:v});}
+    else{const a=open[key];
+     if(a&&a.length){const on=a.shift();
+      (ch===9?drums:notes).push({tick:on.tick,pitch:p,vel:on.vel,dur:Math.max(1,tick-on.tick),ch});}}
+   }
+   else if(hi===0xA0||hi===0xB0||hi===0xE0)pos+=2;
+   else if(hi===0xC0||hi===0xD0)pos+=1;
+   else if(st===0xFF){
+    const ty=u8[pos++];let ln=0;
+    do{b=u8[pos++];ln=(ln<<7)|(b&0x7f);}while(b&0x80);
+    if(ty===0x51)tempos.push({tick,usq:(u8[pos]<<16)|(u8[pos+1]<<8)|u8[pos+2]});
+    pos+=ln;
+    if(ty===0x2F)break;
+   }
+   else if(st===0xF0||st===0xF7){let ln=0;do{b=u8[pos++];ln=(ln<<7)|(b&0x7f);}while(b&0x80);pos+=ln;}
+   else throw new Error('unrecognized event 0x'+st.toString(16));
+  }
+  for(const key in open)for(const on of open[key]){
+   const kk=+key,p=kk%128,ch=(kk-p)/128;
+   (ch===9?drums:notes).push({tick:on.tick,pitch:p,vel:on.vel,dur:Math.max(1,tick-on.tick),ch});
+  }
+  pos=end;
+ }
+ notes.sort((a,b2)=>a.tick-b2.tick);drums.sort((a,b2)=>a.tick-b2.tick);
+ if(!notes.length&&!drums.length)throw new Error('no notes found');
+ return {tpq,tempos,notes,drums,maxTick};
+}
+/* ticks -> seconds through the full tempo map (a single-tempo assumption
+   mis-times most real midi files, which ritard or jump tempo mid-piece) */
+function mkTickToSec(parsed){
+ const T=parsed.tempos.slice().sort((a,b)=>a.tick-b.tick);
+ if(!T.length||T[0].tick>0)T.unshift({tick:0,usq:T.length?T[0].usq:500000});
+ const sec=[0];
+ for(let i=1;i<T.length;i++)sec[i]=sec[i-1]+(T[i].tick-T[i-1].tick)*T[i-1].usq/1e6/parsed.tpq;
+ return tick=>{
+  let i=T.length-1;
+  while(i>0&&T[i].tick>tick)i--;
+  return sec[i]+(tick-T[i].tick)*T[i].usq/1e6/parsed.tpq;
+ };
+}
+function prepareSong(parsed,name){
+ const ts=mkTickToSec(parsed);
+ const notes=parsed.notes.map(n=>({t:ts(n.tick),dur:Math.max(.05,ts(n.tick+n.dur)-ts(n.tick)),
+  midi:n.pitch,vel:n.vel/127}));
+ const drums=[];
+ for(const d of parsed.drums){
+  const lane=GMDRUM[d.pitch];if(lane===undefined)continue;
+  drums.push({t:ts(d.tick),lane,vel:d.vel/127});
+ }
+ const dur=Math.max(ts(parsed.maxTick),notes.reduce((m,n)=>Math.max(m,n.t+n.dur),0),.1);
+ return {name,notes,drums,dur};
+}
+function demoParsed(){
+ const notes=[],drums=[];
+ const N=(tick,p,dur,vel)=>notes.push({tick,pitch:p,vel:vel||92,dur,ch:0});
+ const D=(tick,p,vel)=>drums.push({tick,pitch:p,vel:vel||100,dur:1,ch:9});
+ const bars=[[57,60,64,67],[57,60,64,67],[55,59,62,67],[53,57,60,65]];
+ for(let bar=0;bar<4;bar++){
+  const base=bar*16,ch=bars[bar];
+  for(let i=0;i<8;i++)N(base+i*2,ch[i%4],2,78+(i%4===0?24:0));
+  N(base,ch[0]-12,8,112);
+  if(bar===3){N(base+12,60,2,100);N(base+14,64,2,104);}
+  D(base,36);D(base+8,38);
+  D(base+4,42,72);D(base+12,42,72);
+  if(bar%2)D(base+14,46,64);
+ }
+ return {tpq:4,tempos:[{tick:0,usq:454545}],notes,drums,maxTick:64};
+}
+/* ---------- theory core ---------- */
+const C4=261.6256;
+const edoFifth=n=>Math.round(n*Math.log2(1.5));
+const NOTES12=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const IVNAMES=['unison','min 2nd','maj 2nd','min 3rd','maj 3rd','4th','tritone','5th','min 6th','maj 6th','min 7th','maj 7th'];
+/* Krumhansl–Kessler key profiles; correlation of the duration·velocity
+   weighted pitch-class histogram against all 24 rotations */
+const KS_MAJ=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const KS_MIN=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+function corr(a,b){
+ let ma=0,mb=0;for(let i=0;i<12;i++){ma+=a[i];mb+=b[i];}ma/=12;mb/=12;
+ let n=0,da=0,db=0;
+ for(let i=0;i<12;i++){const x=a[i]-ma,y=b[i]-mb;n+=x*y;da+=x*x;db+=y*y;}
+ return da&&db?n/Math.sqrt(da*db):0;
+}
+function detectKey(notes){
+ if(!notes.length)return null;
+ const h=new Array(12).fill(0);
+ for(const n of notes)h[((n.midi%12)+12)%12]+=n.dur*(0.3+0.7*n.vel);
+ let best=null,second=-2;
+ for(let t=0;t<12;t++)for(const minor of [false,true]){
+  const prof=minor?KS_MIN:KS_MAJ,rot=new Array(12);
+  for(let i=0;i<12;i++)rot[i]=prof[((i-t)%12+12)%12];
+  const r=corr(h,rot);
+  if(!best||r>best.conf){if(best)second=Math.max(second,best.conf);best={tonic:t,minor,conf:r};}
+  else if(r>second)second=r;
+ }
+ best.margin=best.conf-second;
+ best.name=NOTES12[best.tonic]+(best.minor?' minor':' major');
+ /* line-of-fifths coordinates: tonic's fifth index tf in -5..6; the spelling
+    window centers where the key's accidentals actually live (major keys sharp-
+    ward of the tonic, minor keys straddling it — gives F#-in-C, G#-in-Am, Bb-in-Am) */
+ let tf=(best.tonic*7)%12;if(tf>6)tf-=12;
+ best.tf=tf;best.center=tf+(best.minor?0.5:1.5);
+ /* tonic reference note near middle C — the anchor octave for JI ratios */
+ best.tonicMidi=60+((best.tonic+5)%12)-5;
+ return best;
+}
+/* spell a 12-tet pitch class on the chain of fifths: f solves (7f)%12==pc,
+   shifted into the key's window. 7 is its own inverse mod 12. */
+function spellPC(pc,center){
+ let f=(pc*7)%12;
+ f+=12*Math.round((center-f)/12);
+ return f;
+}
+/* tonic-relative 5-limit readings of the 12 interval classes */
+const JI=[[1,1],[16,15],[9,8],[6,5],[5,4],[4,3],[45,32],[3,2],[8,5],[5,3],[9,5],[15,8]];
+const jiCents=pc=>1200*Math.log2(JI[pc][0]/JI[pc][1]);
+/* the three mappings — all return integer steps of the target edo relative to
+   middle C. In 12-edo every one of them is the identity. */
+function convSteps(midi,mode,edo,key){
+ const rel=midi-60;
+ if(mode==='direct'||!key)return Math.round(rel*edo/12);
+ if(mode==='fifths'){
+  const pc=((rel%12)+12)%12,f=spellPC(pc,key.center),o=(rel-7*f)/12;
+  return f*edoFifth(edo)+o*edo;          // the val: fifth→best fifth, octave→edo
+ }
+ // 'just': octave + tonic-relative ratio, anchored at the tonic (no comma drift)
+ const d=midi-key.tonicMidi,o=Math.floor(d/12),pc=d-12*o;
+ const tonicStep=Math.round((key.tonicMidi-60)*edo/12);
+ return tonicStep+o*edo+Math.round(edo*Math.log2(JI[pc][0]/JI[pc][1]));
+}
+/* score a mapping: duration·velocity-weighted mean |cents from the just
+   interval the tonal context implies|, measured tonic-relative so the modes
+   are compared on identical footing */
+function modeError(notes,mode,edo,key){
+ if(!key||!notes.length)return null;
+ const t0=convSteps(key.tonicMidi,mode,edo,key);
+ let sum=0,w=0;
+ for(const n of notes){
+  const d=n.midi-key.tonicMidi,o=Math.floor(d/12),pc=d-12*o;
+  const ideal=o*1200+jiCents(pc);
+  const got=(convSteps(n.midi,mode,edo,key)-t0)*1200/edo;
+  const wt=n.dur*(0.3+0.7*n.vel);
+  sum+=Math.abs(got-ideal)*wt;w+=wt;
+ }
+ return w?sum/w:0;
+}
+/* how well the edo carries the harmonic series — decides matched vs harmonic
+   partials (Sethares: consonance = spectrum aligning with the tuning) */
+function harmErrors(edo){
+ return [3,5,7].map(h=>{
+  const c=1200*Math.log2(h);
+  return {h,err:Math.round(edo*c/1200)*1200/edo-c};
+ });
+}
+function harmScore(edo){
+ /* weights follow how loudly each harmonic actually sounds under a 1/k
+    rolloff — 7 barely registers, so 12-edo's 31¢-flat 7th shouldn't force
+    matched partials (calibrated: 12/19/22/24 read harmonic, 13/16/17 matched) */
+ const W={3:1,5:.6,7:.2};let s=0,w=0;
+ for(const e of harmErrors(edo)){s+=Math.abs(e.err)*W[e.h];w+=W[e.h];}
+ return s/w;
+}
+const KEY_CONF_MIN=0.5,FIFTHS_BONUS=1.5,MATCH_CENTS=12;
+function chooseMode(song,edo,key){
+ if(!key||key.conf<KEY_CONF_MIN)
+  return {mode:'direct',why:'no confident key — keeping literal cents'};
+ const errs={};
+ for(const m of ['fifths','just','direct'])errs[m]=modeError(song.notes,m,edo,key);
+ let best='fifths',bs=errs.fifths-FIFTHS_BONUS;
+ for(const m of ['just','direct'])if(errs[m]<bs){best=m;bs=errs[m];}
+ const why=best==='fifths'
+  ?'fifth-chain lands '+errs.fifths.toFixed(1)+'¢ from just — structure kept'
+  :best==='just'
+  ?'fifth-chain would sit '+errs.fifths.toFixed(1)+'¢ out; just anchoring gets '+errs.just.toFixed(1)+'¢'
+  :'this edo renders tonal intervals best by raw rounding ('+errs.direct.toFixed(1)+'¢)';
+ return {mode:best,why,errs};
+}
+/* ---------- instruments: partial generators, matchable to the tuning ---------- */
+const INSTS={
+ pluck:  {name:'Pluck',   count:6,tilt:1.3, stretch:0,  atk:.004,decay:.45,rel:.08},
+ epiano: {name:'E-Piano', count:5,tilt:1.55,stretch:0,  atk:.004,decay:.9, rel:.12},
+ organ:  {name:'Organ',   count:6,tilt:1.05,stretch:0,  atk:.02, decay:0,  rel:.07},
+ pad:    {name:'Pad',     count:7,tilt:1.15,stretch:0,  atk:.14, decay:0,  rel:.3},
+ bell:   {name:'Bell',    count:6,tilt:.85, stretch:.13,atk:.003,decay:1.1,rel:.3},
+ gamelan:{name:'Gamelan', count:5,tilt:1.0, stretch:.22,atk:.003,decay:.5, rel:.15},
+};
+function chooseInst(song){
+ const ds=song.notes.map(n=>n.dur).sort((a,b)=>a-b);
+ if(!ds.length)return {inst:'pluck',why:'default'};
+ const med=ds[ds.length>>1];
+ const inst=med<=.22?'pluck':med<=.9?'epiano':'organ';
+ return {inst,why:'median note '+Math.round(med*1000)+'ms'};
+}
+function instPartials(instKey,matched,edo){
+ const I=INSTS[instKey],out=[];
+ for(let k=1;k<=I.count;k++){
+  let r=Math.pow(k,1+I.stretch);
+  if(matched)r=Math.pow(2,Math.round(edo*Math.log2(r))/edo);
+  out.push([r,1/Math.pow(k,I.tilt)]);
+ }
+ return out;
+}
+/* ---------- state / derived conversion ---------- */
+const EDOS=[5,7,9,10,11,12,13,14,15,16,17,19,22,24,26,31,41,53];
+const state={edo:19,mode:'auto',inst:'auto',match:'auto',mvol:.8,dvol:.6,loop:true};
+try{Object.assign(state,JSON.parse(localStorage.getItem('commalens.v1'))||{});}catch(_){}
+if(!(state.edo>=2&&state.edo<=120))state.edo=19;state.edo=Math.round(state.edo);
+if(!['auto','direct','fifths','just'].includes(state.mode))state.mode='auto';
+if(!['auto','harmonic','matched'].includes(state.match))state.match='auto';
+if(state.inst!=='auto'&&!INSTS[state.inst])state.inst='auto';
+state.mvol=Math.min(1,Math.max(0,+state.mvol||0));state.dvol=Math.min(1,Math.max(0,+state.dvol||0));
+function savePrefs(){try{localStorage.setItem('commalens.v1',JSON.stringify(state));}catch(_){}}
+let SONG=null,KEY=null,CONV=null;
+/* CONV holds everything playback + drawing need: per-note target frequencies
+   for the converted rendering, plus the decisions and their reasons */
+function rebuild(){
+ if(!SONG){CONV=null;render();return;}
+ const edo=state.edo;
+ const auto=chooseMode(SONG,edo,KEY);
+ const mode=state.mode==='auto'?auto.mode:state.mode;
+ const errs=auto.errs||(KEY?{
+  fifths:modeError(SONG.notes,'fifths',edo,KEY),
+  just:modeError(SONG.notes,'just',edo,KEY),
+  direct:modeError(SONG.notes,'direct',edo,KEY)}:null);
+ const hs=harmScore(edo);
+ const matched=state.match==='auto'?hs>MATCH_CENTS:state.match==='matched';
+ const autoInst=chooseInst(SONG);
+ const inst=state.inst==='auto'?autoInst.inst:state.inst;
+ const notes=SONG.notes.map(n=>{
+  const st=convSteps(n.midi,mode,edo,KEY);
+  return {t:n.t,dur:n.dur,vel:n.vel,midi:n.midi,st,
+   f:C4*Math.pow(2,st/edo),fOrig:C4*Math.pow(2,(n.midi-60)/12)};
+ });
+ CONV={edo,mode,autoMode:auto,errs,matched,hs,inst,autoInst,notes};
+ render();
+ if(playing)restartPlay();
+}
+/* ---------- audio ---------- */
+let AC=null,comp=null,master=null;
+function ensureAC(){
+ if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();
+  comp=AC.createDynamicsCompressor();
+  comp.threshold.value=-14;comp.knee.value=8;comp.ratio.value=8;comp.attack.value=.003;comp.release.value=.22;
+  master=AC.createGain();master.gain.value=.9;
+  comp.connect(master);master.connect(AC.destination);}
+ if(AC.state!=='running')AC.resume();
+}
+const noiseCache=new Map();
+function noiseBuf(ctx){let b=noiseCache.get(ctx);
+ if(!b){b=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const d=b.getChannelData(0);
+  let s=0x9E3779B9;
+  for(let i=0;i<d.length;i++){s^=s<<13;s^=s>>>17;s^=s<<5;d[i]=((s>>>0)/2147483648)-1;}
+  noiseCache.set(ctx,b);}
+ return b;}
+/* drum voices lifted from the loom, pf pinned to 1 */
+const DRUMV=[
+ (ctx,out,t,g)=>{const o=ctx.createOscillator(),ga=ctx.createGain();
+  o.frequency.setValueAtTime(165,t);o.frequency.exponentialRampToValueAtTime(46,t+.11);
+  ga.gain.setValueAtTime(.0001,t);ga.gain.linearRampToValueAtTime(1.25*g,t+.004);
+  ga.gain.exponentialRampToValueAtTime(.001,t+.32);
+  o.connect(ga);ga.connect(out);o.start(t);o.stop(t+.34);},
+ (ctx,out,t,g)=>{const n=ctx.createBufferSource();n.buffer=noiseBuf(ctx);
+  const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1750;bp.Q.value=.7;
+  const ga=ctx.createGain();ga.gain.setValueAtTime(.0001,t);ga.gain.linearRampToValueAtTime(.85*g,t+.002);
+  ga.gain.exponentialRampToValueAtTime(.001,t+.17);
+  n.connect(bp);bp.connect(ga);ga.connect(out);n.start(t);n.stop(t+.2);
+  const o=ctx.createOscillator();o.type='triangle';o.frequency.value=196;
+  const g2=ctx.createGain();g2.gain.setValueAtTime(.0001,t);g2.gain.linearRampToValueAtTime(.5*g,t+.002);
+  g2.gain.exponentialRampToValueAtTime(.001,t+.09);
+  o.connect(g2);g2.connect(out);o.start(t);o.stop(t+.1);},
+ (ctx,out,t,g)=>{const mk=(f,gg,d)=>{const o=ctx.createOscillator(),ga=ctx.createGain();o.frequency.value=f;
+   ga.gain.setValueAtTime(.0001,t);ga.gain.linearRampToValueAtTime(gg,t+.0015);
+   ga.gain.exponentialRampToValueAtTime(.001,t+d);
+   o.connect(ga);ga.connect(out);o.start(t);o.stop(t+d+.02);};
+  mk(812,.9*g,.075);mk(1218,.45*g,.045);},
+ (ctx,out,t,g)=>{const n=ctx.createBufferSource();n.buffer=noiseBuf(ctx);
+  const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=6200;
+  const ga=ctx.createGain();ga.gain.setValueAtTime(.0001,t);ga.gain.linearRampToValueAtTime(.5*g,t+.001);
+  ga.gain.exponentialRampToValueAtTime(.001,t+.05);
+  n.connect(hp);hp.connect(ga);ga.connect(out);n.start(t);n.stop(t+.07);},
+ (ctx,out,t,g)=>{const mk=(f,gg,d)=>{const o=ctx.createOscillator(),ga=ctx.createGain();o.frequency.value=f;
+   ga.gain.setValueAtTime(.0001,t);ga.gain.linearRampToValueAtTime(gg,t+.002);
+   ga.gain.exponentialRampToValueAtTime(.001,t+d);
+   o.connect(ga);ga.connect(out);o.start(t);o.stop(t+d+.02);};
+  mk(523,.7*g,.13);mk(1046,.22*g,.09);},
+];
+/* melodic voice: one sine per partial through a shared envelope + lowpass.
+   Envelope is all feed-forward automation (no cancel), so it renders
+   identically in the OfflineAudioContext for wav export. */
+function playTone(ctx,out,t,f,vel,dur,parts,I,level){
+ const flt=ctx.createBiquadFilter();flt.type='lowpass';flt.frequency.value=8000;
+ const g=ctx.createGain();
+ const sum=parts.reduce((a,p)=>a+p[1],0)||1;
+ const amp=level*(.25+.55*vel)*.32/Math.pow(sum,.7);
+ const atk=I.atk,tOff=t+Math.max(dur,atk+.02);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(amp,t+atk);
+ if(I.decay)g.gain.setTargetAtTime(0,t+atk+.004,I.decay);
+ g.gain.setTargetAtTime(0,tOff,I.rel);
+ const stop=tOff+I.rel*6+.1;
+ for(const p of parts){
+  if(f*p[0]>14000)continue;
+  const o=ctx.createOscillator(),og=ctx.createGain();
+  o.frequency.value=f*p[0];og.gain.value=p[1];
+  o.connect(og);og.connect(flt);o.start(t);o.stop(stop);
+ }
+ flt.connect(g);g.connect(out);
+}
+/* ---------- transport: lookahead scheduler over the merged event list ---------- */
+let playing=false,playKind='conv',t0=0,timer=null,ni=0,di=0,bus=null;
+function schedule(ctx,out,horizon,live){
+ const parts=instPartials(CONV.inst,playKind==='conv'&&CONV.matched,CONV.edo);
+ const I=INSTS[CONV.inst];
+ while(ni<CONV.notes.length){
+  const n=CONV.notes[ni];
+  const at=t0+n.t;if(at>horizon)break;
+  playTone(ctx,out,at,playKind==='conv'?n.f:n.fOrig,n.vel,n.dur,parts,I,state.mvol);
+  ni++;
+ }
+ while(di<SONG.drums.length){
+  const d=SONG.drums[di];
+  const at=t0+d.t;if(at>horizon)break;
+  if(state.dvol>.001)DRUMV[d.lane](ctx,out,at,.9*d.vel*state.dvol);
+  di++;
+ }
+}
+function pump(){
+ const hz=AC.currentTime+.3;
+ schedule(AC,bus,hz,true);
+ if(ni>=CONV.notes.length&&di>=SONG.drums.length&&AC.currentTime>t0+SONG.dur+.5){
+  if(state.loop){t0+=SONG.dur+1;ni=0;di=0;}
+  else stopPlay();
+ }
+}
+function startPlay(kind){
+ if(!CONV)return;
+ ensureAC();
+ if(playing)stopPlay();
+ playKind=kind;playing=true;ni=0;di=0;
+ bus=AC.createGain();bus.connect(comp);
+ t0=AC.currentTime+.12;
+ timer=setInterval(pump,60);pump();
+ $('playC').innerHTML=kind==='conv'?'&#9632; still':'&#9654; converted';
+ $('playO').innerHTML=kind==='orig'?'&#9632; still':'&#9654; original 12-tet';
+ ($('play'+(kind==='conv'?'C':'O'))).classList.add('on');
+}
+function stopPlay(){
+ if(timer)clearInterval(timer);timer=null;playing=false;
+ if(bus){const b=bus;b.gain.setTargetAtTime(0,AC.currentTime,.03);
+  setTimeout(()=>{try{b.disconnect();}catch(e){}},400);bus=null;}
+ $('playC').innerHTML='&#9654; converted';$('playO').innerHTML='&#9654; original 12-tet';
+ $('playC').classList.remove('on');$('playO').classList.remove('on');
+}
+function restartPlay(){const k=playKind;stopPlay();startPlay(k);}
+/* ---------- wav export (converted rendering) ---------- */
+function clamp16(x){x=Math.max(-1,Math.min(1,x));return Math.round(x*32767);}
+async function renderWAV(){
+ if(!CONV)return;
+ if(playing)stopPlay();          // the offline pass borrows the scheduler counters
+ const btn=$('wav');btn.disabled=true;warn('rendering…');
+ try{
+  const sr=44100,len=Math.ceil((SONG.dur+2)*sr);
+  const off=new OfflineAudioContext(2,len,sr);
+  const c2=off.createDynamicsCompressor();
+  c2.threshold.value=-14;c2.knee.value=8;c2.ratio.value=8;c2.attack.value=.003;c2.release.value=.22;
+  c2.connect(off.destination);
+  const wasKind=playKind,wasNi=ni,wasDi=di,wasT0=t0;
+  playKind='conv';ni=0;di=0;t0=.05;
+  schedule(off,c2,1e9,false);
+  playKind=wasKind;ni=wasNi;di=wasDi;t0=wasT0;
+  const buf=await off.startRendering();
+  const L=buf.getChannelData(0),R=buf.getChannelData(1);
+  let pk=1e-6;
+  for(let i=0;i<len;i++){const a=Math.abs(L[i]),b=Math.abs(R[i]);if(a>pk)pk=a;if(b>pk)pk=b;}
+  const sc=.89/pk;
+  const ab=new ArrayBuffer(44+len*4),v=new DataView(ab);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+len*4,true);w(8,'WAVE');w(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);
+  w(36,'data');v.setUint32(40,len*4,true);
+  const pcm=new Int16Array(ab,44,len*2);
+  for(let i=0;i<len;i++){pcm[2*i]=clamp16(L[i]*sc);pcm[2*i+1]=clamp16(R[i]*sc);}
+  const blob=new Blob([ab],{type:'audio/wav'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=SONG.name.replace(/[^a-z0-9_-]+/gi,'_')+'-'+CONV.edo+'edo-'+CONV.mode+'.wav';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  warn('');
+ }catch(err){warn('render failed: '+err.message);}
+ btn.disabled=false;
+}
+/* ---------- piano roll: converted filled, original hollow, target grid faint ---------- */
+const cv=$('roll'),cx=cv.getContext('2d');
+let CW=0,CH=0,offCv=null;
+function fit(){
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ CW=cv.clientWidth;CH=Math.min(340,Math.round(CW*0.62));
+ cv.style.height=CH+'px';cv.width=Math.round(CW*dpr);cv.height=Math.round(CH*dpr);
+ cx.setTransform(dpr,0,0,dpr,0,0);
+ prerender();
+}
+window.addEventListener('resize',fit);
+function prerender(){
+ offCv=null;
+ if(!CONV||!CONV.notes.length)return;
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ offCv=document.createElement('canvas');
+ offCv.width=Math.round(CW*dpr);offCv.height=Math.round(CH*dpr);
+ const c=offCv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+ c.fillStyle='#080f10';c.fillRect(0,0,CW,CH);
+ let lo=1e9,hi=-1e9;
+ for(const n of CONV.notes){
+  const a=Math.log2(n.f),b=Math.log2(n.fOrig);
+  lo=Math.min(lo,a,b);hi=Math.max(hi,a,b);
+ }
+ lo-=.12;hi+=.12;
+ const pad=6,dBot=SONG.drums.length?14:2,H=CH-dBot;
+ const Y=lf=>H-pad-(lf-lo)/(hi-lo)*(H-2*pad);
+ const X=t=>pad+t/SONG.dur*(CW-2*pad);
+ const edo=CONV.edo,l2C4=Math.log2(C4);
+ for(let st=Math.ceil((lo-l2C4)*edo);st<=(hi-l2C4)*edo;st++){
+  const oct=((st%edo)+edo)%edo===0;
+  c.strokeStyle=oct?'rgba(217,242,238,.22)':'rgba(95,211,196,'+(edo>30?.05:.09)+')';
+  const y=Y(l2C4+st/edo);
+  c.beginPath();c.moveTo(pad,y);c.lineTo(CW-pad,y);c.stroke();
+ }
+ const bh=Math.max(2.5,Math.min(9,(H-2*pad)/((hi-lo)*12)*.75));
+ for(const n of CONV.notes){
+  const x=X(n.t),w=Math.max(2,X(n.t+n.dur)-x);
+  const yo=Y(Math.log2(n.fOrig));
+  c.strokeStyle=hexA('#c9a86a',.5);
+  c.strokeRect(x+.5,yo-bh/2+.5,w-1,bh-1);
+  const y=Y(Math.log2(n.f));
+  const hue=(Math.log2(n.f)*100)%360;
+  c.fillStyle='hsl('+hue.toFixed(0)+' 75% 62%/'+(.4+.5*n.vel)+')';
+  c.fillRect(x,y-bh/2,w,bh);
+ }
+ c.fillStyle='rgba(217,242,238,.35)';
+ for(const d of SONG.drums)c.fillRect(X(d.t),CH-10,1.5,8);
+}
+function draw(){
+ requestAnimationFrame(draw);
+ if(!CW)fit();
+ cx.fillStyle='#080f10';cx.fillRect(0,0,CW,CH);
+ if(offCv)cx.drawImage(offCv,0,0,CW,CH);
+ else{
+  cx.fillStyle='rgba(111,149,143,.7)';cx.font='12px ui-monospace,monospace';
+  cx.textAlign='center';cx.fillText('import a midi (or tap demo seq) to begin',CW/2,CH/2);
+ }
+ if(playing&&SONG){
+  const u=((AC.currentTime-t0)%(SONG.dur+ (state.loop?1:0)))/SONG.dur;
+  if(u>=0&&u<=1){
+   const x=6+u*(CW-12);
+   cx.strokeStyle=playKind==='conv'?'rgba(143,240,226,.8)':'rgba(201,168,106,.8)';
+   cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,CH);cx.stroke();
+  }
+ }
+}
+/* ---------- report + interval map ---------- */
+const fmtC=x=>(x>=0?'+':'')+x.toFixed(1)+'¢';
+function render(){
+ const rep=$('report');
+ $('v_edo').textContent=state.edo+'-edo · '+(1200/state.edo).toFixed(1)+'¢/step';
+ $('v_mode').textContent=state.mode+(CONV&&state.mode==='auto'?' → '+CONV.mode:'');
+ $('v_match').textContent=state.match+(CONV&&state.match==='auto'?(CONV.matched?' → matched':' → harmonic'):'');
+ $('v_inst').textContent=state.inst==='auto'&&CONV?'auto → '+INSTS[CONV.inst].name:state.inst==='auto'?'auto':INSTS[state.inst].name;
+ $('v_mvol').textContent=Math.round(state.mvol*100)+'%';
+ $('v_dvol').textContent=Math.round(state.dvol*100)+'%';
+ $('loopbtn').classList.toggle('on',state.loop);
+ if(!SONG){
+  $('readout').textContent='import a midi or tap demo seq — then pick a tuning';
+  rep.style.display='none';$('mapwrap').style.display='none';
+  prerender();return;
+ }
+ $('readout').textContent=SONG.name+' · '+SONG.notes.length+' notes'
+  +(SONG.drums.length?' + '+SONG.drums.length+' drum hits':'')+' · '+SONG.dur.toFixed(1)+'s';
+ const he=harmErrors(state.edo);
+ const lines=[];
+ lines.push('<span class="k">key</span>'+(KEY
+  ?'<b>'+KEY.name+'</b> <span class="why">r='+KEY.conf.toFixed(2)+', margin '+KEY.margin.toFixed(2)+'</span>'
+  :'<b>none detected</b>'));
+ lines.push('<span class="k">tuning</span><b>'+state.edo+'-edo</b> <span class="why">fifth '
+  +fmtC(he[0].err)+' · maj third '+fmtC(he[1].err)+' · 7th harm '+fmtC(he[2].err)+'</span>');
+ if(CONV){
+  lines.push('<span class="k">conversion</span><b>'+CONV.mode+'</b> <span class="why">'
+   +(state.mode==='auto'?CONV.autoMode.why:'manual')
+   +(CONV.errs?' — vs just: fifths '+CONV.errs.fifths.toFixed(1)+'¢ · just '+CONV.errs.just.toFixed(1)
+    +'¢ · direct '+CONV.errs.direct.toFixed(1)+'¢':'')+'</span>');
+  lines.push('<span class="k">timbre</span><b>'+INSTS[CONV.inst].name+', '
+   +(CONV.matched?'matched partials':'harmonic partials')+'</b> <span class="why">'
+   +(state.inst==='auto'?CONV.autoInst.why+' · ':'')
+   +'harmonics 3·5·7 land '+CONV.hs.toFixed(1)+'¢ off'
+   +(state.match==='auto'?(CONV.matched?' — snapping the spectrum to the tuning':' — harmonic series fits'):'')+'</span>');
+ }
+ rep.innerHTML=lines.join('<br>');rep.style.display='block';
+ renderMap();prerender();
+}
+function renderMap(){
+ const wrap=$('mapwrap');
+ if(!SONG){wrap.style.display='none';return;}
+ wrap.style.display='block';
+ const key=KEY||{tonic:0,minor:false,conf:0,center:1.5,tonicMidi:60,tf:0,name:'C (assumed)'};
+ const edo=state.edo,tm=key.tonicMidi;
+ const base={};
+ for(const m of ['fifths','just','direct'])base[m]=convSteps(tm,m,edo,key);
+ let h='<table><tr><th>from '+NOTES12[key.tonic]+'</th><th>just</th><th>fifths</th><th>just-anchor</th><th>direct</th></tr>';
+ for(let pc=0;pc<12;pc++){
+  const ideal=jiCents(pc);
+  h+='<tr><td>'+IVNAMES[pc]+'</td><td>'+JI[pc][0]+'/'+JI[pc][1]+' '+ideal.toFixed(0)+'¢</td>';
+  for(const m of ['fifths','just','direct']){
+   const st=convSteps(tm+pc,m,edo,key)-base[m];
+   const cents=st*1200/edo,err=cents-ideal;
+   const pick=CONV&&CONV.mode===m;
+   h+='<td'+(pick?' class="pick"':'')+'>'+st+'\\'+edo+' · '+cents.toFixed(0)+'¢ ('+fmtC(err)+')</td>';
+  }
+  h+='</tr>';
+ }
+ $('maptab').innerHTML=h+'</table>';
+}
+/* ---------- ui wiring ---------- */
+function seg(el,items,get,set){
+ el.innerHTML='';
+ items.forEach(it=>{
+  const b=document.createElement('button');b.textContent=it.l;
+  if(get()===it.v)b.classList.add('on');
+  b.onclick=()=>{set(it.v);
+   Array.from(el.children).forEach((x,j)=>x.classList.toggle('on',items[j].v===get()));
+   savePrefs();rebuild();};
+  el.appendChild(b);
+ });
+}
+seg($('edoseg'),EDOS.map(n=>({l:String(n),v:n})),()=>state.edo,v=>state.edo=v);
+$('v_edo').style.cursor='pointer';
+$('v_edo').style.borderBottom='1px dotted rgba(143,240,226,.45)';
+$('v_edo').onclick=()=>{
+ const s=prompt('divisions of the octave (2–120):',state.edo);
+ const n=Math.round(+s);
+ if(s!==null&&n>=2&&n<=120){state.edo=n;
+  Array.from($('edoseg').children).forEach((x,j)=>x.classList.toggle('on',EDOS[j]===n));
+  savePrefs();rebuild();}
+};
+seg($('modeseg'),[{l:'auto',v:'auto'},{l:'direct',v:'direct'},{l:'fifths',v:'fifths'},{l:'just',v:'just'}],
+ ()=>state.mode,v=>state.mode=v);
+seg($('matchseg'),[{l:'auto',v:'auto'},{l:'harmonic',v:'harmonic'},{l:'matched',v:'matched'}],
+ ()=>state.match,v=>state.match=v);
+(function(){
+ const sel=$('instsel');
+ let h='<option value="auto">auto</option>';
+ for(const k in INSTS)h+='<option value="'+k+'">'+INSTS[k].name+'</option>';
+ sel.innerHTML=h;sel.value=state.inst;
+ sel.onchange=()=>{state.inst=INSTS[sel.value]?sel.value:'auto';savePrefs();rebuild();};
+})();
+function bindVol(id,key){const el=$(id);el.value=state[key];
+ el.addEventListener('input',()=>{state[key]=+el.value;savePrefs();render();});}
+bindVol('mvol','mvol');bindVol('dvol','dvol');
+$('loopbtn').onclick=()=>{state.loop=!state.loop;savePrefs();render();};
+$('playC').onclick=()=>{(playing&&playKind==='conv')?stopPlay():startPlay('conv');};
+$('playO').onclick=()=>{(playing&&playKind==='orig')?stopPlay():startPlay('orig');};
+$('wav').onclick=renderWAV;
+window.addEventListener('keydown',e=>{
+ if(e.code==='Space'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='TEXTAREA'){
+  e.preventDefault();$('playC').click();}});
+/* ---------- loading ---------- */
+function loadSong(parsed,name){
+ stopPlay();
+ SONG=prepareSong(parsed,name);
+ KEY=detectKey(SONG.notes);
+ $('mideject').style.display='';
+ rebuild();
+}
+$('mideject').onclick=()=>{stopPlay();SONG=null;KEY=null;CONV=null;
+ $('mideject').style.display='none';render();};
+function readFileBuf(f){
+ if(f.arrayBuffer)return f.arrayBuffer();
+ return new Promise((res,rej)=>{const r=new FileReader();
+  r.onload=()=>res(r.result);
+  r.onerror=()=>rej(r.error||new Error('file read failed'));
+  r.readAsArrayBuffer(f);});
+}
+$('midifile').addEventListener('change',async e=>{
+ const f=e.target.files&&e.target.files[0];if(!f)return;
+ try{
+  const buf=await readFileBuf(f);
+  loadSong(parseMIDI(buf),(f.name||'midi').replace(/(\.(mid|midi|smf|kar))+$/i,''));
+  warn('');
+ }catch(err){warn('midi import failed: '+err.message);}
+ e.target.value='';
+});
+$('b64load').onclick=()=>{
+ try{
+  const s=$('b64').value.replace(/^data:[^,]*,/,'').replace(/\s+/g,'');
+  if(!s)throw new Error('paste base64 first');
+  const bin=atob(s),u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  loadSong(parseMIDI(u.buffer),'pasted midi');
+  $('b64').value='';warn('');
+ }catch(err){warn('base64 import failed: '+err.message);}
+};
+$('mididemo').onclick=()=>{loadSong(demoParsed(),'little demo');warn('');};
+/* ---------- init ---------- */
+render();fit();requestAnimationFrame(draw);
+</script>
+</body>
+</html>
