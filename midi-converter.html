@@ -50,6 +50,22 @@ summary{color:var(--gold);cursor:pointer;letter-spacing:.4px}
 details p{margin:9px 0}
 code,details b{color:var(--gold);font-style:normal}
 details i{color:var(--ink)}
+#scrubrow{display:flex;gap:10px;align-items:center;margin-top:8px}
+#scrubrow input{flex:1;margin:0}
+#scrubtime{color:var(--dim);font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#vgpanel{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+#vgcrumb{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+#vgcrumb button{padding:4px 9px;font-size:11px;background:var(--panel2)}
+#vgcrumb .sep{color:var(--dim);font-size:11px}
+#vgfilter{width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+ border-radius:8px;font:12px/1.4 ui-monospace,Menlo,monospace;padding:7px 9px;margin-bottom:8px}
+#vglist{max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+#vglist button{text-align:left;padding:6px 9px;font-size:12px;background:var(--panel2);border-radius:6px;
+ display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+#vglist button span{overflow-wrap:anywhere}
+#vglist button small{color:var(--dim);white-space:nowrap}
+#vglist .vgrp{color:var(--gold);font-size:10px;letter-spacing:.6px;text-transform:uppercase;margin:7px 0 1px}
+#vglist .vmsg{color:var(--dim);font-size:12px;padding:6px 2px}
 #report{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
  padding:10px 13px;font-size:12px;line-height:1.6;display:none}
 #report .k{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.6px;margin-right:6px}
@@ -71,6 +87,10 @@ details i{color:var(--ink)}
 </header>
 
 <canvas id="roll"></canvas>
+<div id="scrubrow">
+ <input id="scrub" type="range" min="0" max="1" step="0.01" value="0" disabled>
+ <span id="scrubtime">&ndash;:&ndash;&ndash; / &ndash;:&ndash;&ndash;</span>
+</div>
 
 <div class="row">
  <button id="playC" class="primary">&#9654; converted</button>
@@ -83,7 +103,14 @@ details i{color:var(--ink)}
 <div class="row">
  <label class="filebtn" for="midifile">&#9836; import midi<input type="file" id="midifile"></label>
  <button id="mididemo">demo seq</button>
+ <button id="vgbtn">&#9689; vgmusic.com</button>
+ <button id="vgrand" style="display:none">&#10022; random</button>
  <button id="mideject" style="display:none">eject</button>
+</div>
+<div id="vgpanel" style="display:none">
+ <div id="vgcrumb"></div>
+ <input id="vgfilter" placeholder="filter&hellip;">
+ <div id="vglist"></div>
 </div>
 <details><summary>picker won't open? paste midi as base64</summary>
  <textarea id="b64" rows="3" placeholder="paste base64 of a .mid file (data: URIs fine) &mdash; e.g. from `base64 -w0 song.mid`"></textarea>
@@ -469,6 +496,31 @@ function playTone(ctx,out,t,f,vel,dur,parts,I,level){
 }
 /* ---------- transport: lookahead scheduler over the merged event list ---------- */
 let playing=false,playKind='conv',t0=0,timer=null,ni=0,di=0,bus=null;
+let scrubPos=0,scrubbing=false,seekTimer=null;
+const fmtT=s=>Math.floor(s/60)+':'+('0'+Math.floor(s%60)).slice(-2);
+function ffwd(sec){
+ ni=0;while(ni<CONV.notes.length&&CONV.notes[ni].t<sec)ni++;
+ di=0;while(di<SONG.drums.length&&SONG.drums[di].t<sec)di++;
+}
+/* seeking mid-play: the lookahead has already committed ~0.3s of one-shot
+   voices to the bus and keeps no handles, so the only clean cancel is to
+   fade the whole bus out and start a fresh one at the new position */
+function audioSeek(sec){
+ if(!playing)return;
+ const b=bus;b.gain.setTargetAtTime(0,AC.currentTime,.02);
+ setTimeout(()=>{try{b.disconnect();}catch(e){}},300);
+ bus=AC.createGain();bus.connect(comp);
+ ffwd(sec);
+ t0=AC.currentTime+.08-sec;
+ pump();
+}
+/* drag fires input storms; the position updates instantly (visual) while the
+   audio re-anchor trails at most 120ms behind the newest value */
+function requestSeek(sec){
+ scrubPos=sec;
+ if(!playing||seekTimer)return;
+ seekTimer=setTimeout(()=>{seekTimer=null;audioSeek(scrubPos);},120);
+}
 function schedule(ctx,out,horizon,live){
  const parts=instPartials(CONV.inst,playKind==='conv'&&CONV.matched,CONV.edo);
  const I=INSTS[CONV.inst];
@@ -490,16 +542,18 @@ function pump(){
  schedule(AC,bus,hz,true);
  if(ni>=CONV.notes.length&&di>=SONG.drums.length&&AC.currentTime>t0+SONG.dur+.5){
   if(state.loop){t0+=SONG.dur+1;ni=0;di=0;}
-  else stopPlay();
+  else{stopPlay();scrubPos=0;}
  }
 }
 function startPlay(kind){
  if(!CONV)return;
  ensureAC();
  if(playing)stopPlay();
- playKind=kind;playing=true;ni=0;di=0;
+ playKind=kind;playing=true;
+ if(scrubPos>=SONG.dur-.05)scrubPos=0;      // play at the very end means from the top
+ ffwd(scrubPos);
  bus=AC.createGain();bus.connect(comp);
- t0=AC.currentTime+.12;
+ t0=AC.currentTime+.12-scrubPos;
  timer=setInterval(pump,60);pump();
  $('playC').innerHTML=kind==='conv'?'&#9632; still':'&#9654; converted';
  $('playO').innerHTML=kind==='orig'?'&#9632; still':'&#9654; original 12-tet';
@@ -507,6 +561,7 @@ function startPlay(kind){
 }
 function stopPlay(){
  if(timer)clearInterval(timer);timer=null;playing=false;
+ if(seekTimer){clearTimeout(seekTimer);seekTimer=null;}
  if(bus){const b=bus;b.gain.setTargetAtTime(0,AC.currentTime,.03);
   setTimeout(()=>{try{b.disconnect();}catch(e){}},400);bus=null;}
  $('playC').innerHTML='&#9654; converted';$('playO').innerHTML='&#9654; original 12-tet';
@@ -609,15 +664,18 @@ function draw(){
   cx.fillStyle='rgba(111,149,143,.7)';cx.font='12px ui-monospace,monospace';
   cx.textAlign='center';cx.fillText('import a midi (or tap demo seq) to begin',CW/2,CH/2);
  }
- if(playing&&SONG){
-  const u=((AC.currentTime-t0)%(SONG.dur+ (state.loop?1:0)))/SONG.dur;
-  if(u>=0&&u<=1){
-   const x=6+u*(CW-12);
-   cx.strokeStyle=playKind==='conv'?'rgba(143,240,226,.8)':'rgba(201,168,106,.8)';
-   cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,CH);cx.stroke();
-  }
+ if(SONG&&CONV){
+  if(playing)scrubPos=Math.max(0,Math.min(SONG.dur,AC.currentTime-t0));
+  const x=6+(scrubPos/SONG.dur)*(CW-12);
+  cx.strokeStyle=playing?(playKind==='conv'?'rgba(143,240,226,.8)':'rgba(201,168,106,.8)')
+   :'rgba(143,240,226,.35)';
+  cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,CH);cx.stroke();
+  if(!scrubbing)$('scrub').value=scrubPos;
+  const tl=fmtT(scrubPos)+' / '+fmtT(SONG.dur);
+  if(tl!==lastTL){lastTL=tl;$('scrubtime').textContent=tl;}
  }
 }
+let lastTL='';
 /* ---------- report + interval map ---------- */
 const fmtC=x=>(x>=0?'+':'')+x.toFixed(1)+'¢';
 function render(){
@@ -629,6 +687,9 @@ function render(){
  $('v_mvol').textContent=Math.round(state.mvol*100)+'%';
  $('v_dvol').textContent=Math.round(state.dvol*100)+'%';
  $('loopbtn').classList.toggle('on',state.loop);
+ const sc=$('scrub');
+ if(SONG){sc.disabled=false;sc.max=SONG.dur.toFixed(2);}
+ else{sc.disabled=true;sc.value=0;lastTL='';$('scrubtime').textContent='–:–– / –:––';}
  if(!SONG){
   $('readout').textContent='import a midi or tap demo seq — then pick a tuning';
   rep.style.display='none';$('mapwrap').style.display='none';
@@ -716,6 +777,13 @@ function bindVol(id,key){const el=$(id);el.value=state[key];
  el.addEventListener('input',()=>{state[key]=+el.value;savePrefs();render();});}
 bindVol('mvol','mvol');bindVol('dvol','dvol');
 $('loopbtn').onclick=()=>{state.loop=!state.loop;savePrefs();render();};
+(function(){
+ const sc=$('scrub');
+ sc.addEventListener('input',()=>{
+  if(SONG)requestSeek(Math.min(SONG.dur,Math.max(0,+sc.value||0)));});
+ sc.addEventListener('pointerdown',()=>{scrubbing=true;});
+ window.addEventListener('pointerup',()=>{scrubbing=false;});
+})();
 $('playC').onclick=()=>{(playing&&playKind==='conv')?stopPlay():startPlay('conv');};
 $('playO').onclick=()=>{(playing&&playKind==='orig')?stopPlay():startPlay('orig');};
 $('wav').onclick=renderWAV;
@@ -724,13 +792,13 @@ window.addEventListener('keydown',e=>{
   e.preventDefault();$('playC').click();}});
 /* ---------- loading ---------- */
 function loadSong(parsed,name){
- stopPlay();
+ stopPlay();scrubPos=0;
  SONG=prepareSong(parsed,name);
  KEY=detectKey(SONG.notes);
  $('mideject').style.display='';
  rebuild();
 }
-$('mideject').onclick=()=>{stopPlay();SONG=null;KEY=null;CONV=null;
+$('mideject').onclick=()=>{stopPlay();scrubPos=0;SONG=null;KEY=null;CONV=null;
  $('mideject').style.display='none';render();};
 function readFileBuf(f){
  if(f.arrayBuffer)return f.arrayBuffer();
@@ -759,6 +827,177 @@ $('b64load').onclick=()=>{
  }catch(err){warn('base64 import failed: '+err.message);}
 };
 $('mididemo').onclick=()=>{loadSong(demoParsed(),'little demo');warn('');};
+/* ---------- vgmusic.com browser ---------- */
+/* vgmusic.com is a static archive with no CORS headers, so every request
+   rides through a public cors proxy — the first that answers becomes sticky.
+   corsproxy.io only admits real browser origins (curl gets a 403), the rest
+   are plain relays with uneven uptime, hence the fallback chain. */
+const VG_HOME='https://www.vgmusic.com/';
+const VG_PROXIES=[
+ u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+ u=>'https://proxy.cors.sh/'+u,
+ u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+ u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u),
+];
+let vgProxy=0;
+async function vgFetch(url,asBuf){
+ let err;
+ for(let i=0;i<VG_PROXIES.length;i++){
+  const p=(vgProxy+i)%VG_PROXIES.length;
+  try{
+   const ctl=new AbortController(),tt=setTimeout(()=>ctl.abort(),45000);
+   const r=await fetch(VG_PROXIES[p](url),{signal:ctl.signal});
+   clearTimeout(tt);
+   if(!r.ok)throw new Error('http '+r.status);
+   const v=await(asBuf?r.arrayBuffer():r.text());
+   if(asBuf?v.byteLength<16:v.length<64)throw new Error('empty response');
+   vgProxy=p;return v;
+  }catch(e){err=e;}
+ }
+ throw new Error('all cors proxies failed ('+(err&&err.message)+') — try again shortly');
+}
+/*VGPARSE*/
+/* the homepage nav links every system as /music/<section>/<company>/<system>/;
+   grouping by path segment survives site redesigns better than headings do */
+function vgParseSystems(html){
+ const doc=new DOMParser().parseFromString(html,'text/html');
+ const out=[],seen=new Set();
+ for(const a of doc.querySelectorAll('a[href]')){
+  const m=(a.getAttribute('href')||'').match(/^(?:https?:\/\/(?:www\.)?vgmusic\.com)?\/?(music\/[a-z0-9_\-\/.]+\/)$/i);
+  if(!m)continue;
+  const path=m[1].toLowerCase(),segs=path.split('/').filter(Boolean);
+  if(segs.length<4||seen.has(path))continue;
+  seen.add(path);
+  const g=segs[1]==='console'?segs[2]:segs[1];
+  out.push({grp:g.length<=3?g.toUpperCase():g[0].toUpperCase()+g.slice(1),
+   name:(a.textContent||'').replace(/\s+/g,' ').trim()||segs[segs.length-1],path});
+ }
+ return out;
+}
+/* system indexes: <tr class="gameheader"><td class="header">Game</td></tr>
+   headers, then rows of relative .mid links (comments links are .html) */
+function vgParseSongs(html,baseUrl){
+ const doc=new DOMParser().parseFromString(html,'text/html');
+ const games=[];let cur=null;
+ for(const tr of doc.querySelectorAll('tr')){
+  const hd=tr.querySelector('td.header');
+  if(hd){const t=hd.textContent.replace(/\s+/g,' ').trim();
+   if(t){cur={game:t,songs:[]};games.push(cur);}continue;}
+  for(const a of tr.querySelectorAll('a[href]')){
+   const h=a.getAttribute('href')||'';
+   if(!/\.mid$/i.test(h))continue;
+   if(!cur){cur={game:'(unsorted)',songs:[]};games.push(cur);}
+   try{cur.songs.push({title:(a.textContent||'').replace(/\s+/g,' ').trim()||h,
+    url:new URL(h,baseUrl).href});}catch(_){}
+  }
+ }
+ return games.filter(g=>g.songs.length);
+}
+/*ENDVGPARSE*/
+/* verified fallback should the homepage parse ever come up empty */
+const VG_FALLBACK=[
+ ['Nintendo','NES','music/console/nintendo/nes/'],
+ ['Nintendo','SNES','music/console/nintendo/snes/'],
+ ['Nintendo','Nintendo 64','music/console/nintendo/n64/'],
+ ['Nintendo','Game Boy','music/console/nintendo/gameboy/'],
+ ['Nintendo','GBA','music/console/nintendo/gba/'],
+ ['Sega','Genesis','music/console/sega/genesis/'],
+ ['Sony','PlayStation','music/console/sony/ps1/'],
+].map(x=>({grp:x[0],name:x[1],path:x[2]}));
+const vgPages=new Map();
+let vgSystems=null,vgSys=null,vgGames=null,vgGame=null,vgBusy=false;
+function vgMsg(m){const l=$('vglist');l.innerHTML='';
+ const d=document.createElement('div');d.className='vmsg';d.textContent=m;l.appendChild(d);}
+function vgCrumbs(){
+ const c=$('vgcrumb');c.innerHTML='';
+ const mk=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=fn;c.appendChild(b);};
+ const sep=()=>{const s=document.createElement('span');s.className='sep';s.textContent='›';c.appendChild(s);};
+ mk('vgmusic.com',()=>{vgSys=null;vgGames=null;vgGame=null;$('vgfilter').value='';vgRender();});
+ if(vgSys){sep();mk(vgSys.name,()=>{vgGame=null;$('vgfilter').value='';vgRender();});}
+ if(vgGame){sep();mk(vgGame.game.slice(0,48),()=>{});}
+}
+function vgRender(){
+ vgCrumbs();
+ $('vgrand').style.display=vgGames?'':'none';
+ const list=$('vglist'),q=$('vgfilter').value.trim().toLowerCase();
+ list.innerHTML='';
+ const frag=document.createDocumentFragment();
+ const add=(label,count,fn)=>{const b=document.createElement('button');
+  const s1=document.createElement('span');s1.textContent=label;b.appendChild(s1);
+  if(count){const s2=document.createElement('small');s2.textContent=count;b.appendChild(s2);}
+  b.onclick=fn;frag.appendChild(b);};
+ if(!vgSys){
+  if(!vgSystems){vgLoadSystems();return;}
+  let grp=null;
+  for(const s of vgSystems){
+   if(q&&!(s.grp+' '+s.name).toLowerCase().includes(q))continue;
+   if(s.grp!==grp){grp=s.grp;
+    const d=document.createElement('div');d.className='vgrp';d.textContent=grp;frag.appendChild(d);}
+   add(s.name,'',()=>vgOpenSys(s));
+  }
+ }else if(!vgGame){
+  if(!vgGames)return;
+  for(const g of vgGames){
+   if(q&&!g.game.toLowerCase().includes(q))continue;
+   add(g.game,g.songs.length,()=>{vgGame=g;$('vgfilter').value='';vgRender();});
+  }
+ }else{
+  for(const s of vgGame.songs){
+   if(q&&!s.title.toLowerCase().includes(q))continue;
+   add(s.title,'',()=>vgLoadSong(s,vgGame.game));
+  }
+ }
+ list.appendChild(frag);
+ if(!list.children.length)vgMsg('nothing matches');
+}
+async function vgLoadSystems(){
+ if(vgBusy)return;vgBusy=true;
+ vgMsg('fetching system list…');
+ try{vgSystems=vgParseSystems(await vgFetch(VG_HOME,false));}catch(e){vgSystems=null;}
+ if(!vgSystems||vgSystems.length<5)vgSystems=VG_FALLBACK;
+ vgBusy=false;vgRender();
+}
+async function vgOpenSys(s){
+ if(vgBusy)return;
+ vgSys=s;vgGame=null;vgGames=vgPages.get(s.path)||null;$('vgfilter').value='';
+ if(vgGames){vgRender();return;}
+ vgBusy=true;vgCrumbs();
+ vgMsg('fetching '+s.name+' index… (the big ones are a few MB)');
+ try{
+  const url=VG_HOME+s.path;
+  const games=vgParseSongs(await vgFetch(url,false),url);
+  if(!games.length)throw new Error('no midis found on that page');
+  vgPages.set(s.path,games);vgGames=games;
+ }catch(e){vgSys=null;vgBusy=false;vgCrumbs();vgMsg('failed: '+e.message);return;}
+ vgBusy=false;vgRender();
+}
+async function vgLoadSong(s,game){
+ if(vgBusy)return;vgBusy=true;
+ warn('');
+ const old=$('readout').textContent;
+ $('readout').textContent='downloading '+s.title+'…';
+ try{
+  const buf=await vgFetch(s.url,true);
+  loadSong(parseMIDI(buf),(game&&game!=='(unsorted)'?game+' — ':'')+s.title);
+ }catch(e){$('readout').textContent=old;warn('vgmusic: '+e.message);}
+ vgBusy=false;
+}
+$('vgbtn').onclick=()=>{
+ const p=$('vgpanel'),show=p.style.display==='none';
+ p.style.display=show?'':'none';
+ $('vgbtn').classList.toggle('on',show);
+ if(show)vgRender();else $('vgrand').style.display='none';
+};
+$('vgrand').onclick=()=>{
+ if(!vgGames)return;
+ if(vgGame){const s=vgGame.songs[Math.floor(Math.random()*vgGame.songs.length)];
+  vgLoadSong(s,vgGame.game);return;}
+ const pool=vgGames.flatMap(g=>g.songs.map(x=>({s:x,g:g.game})));
+ if(!pool.length)return;
+ const pick=pool[Math.floor(Math.random()*pool.length)];
+ vgLoadSong(pick.s,pick.g);
+};
+$('vgfilter').addEventListener('input',vgRender);
 /* ---------- init ---------- */
 render();fit();requestAnimationFrame(draw);
 </script>
