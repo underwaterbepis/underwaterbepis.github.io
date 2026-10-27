@@ -1,0 +1,1397 @@
+<title>Faster Logical Induction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+  svg: { fontCache: "global" },
+  options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code", "canvas"] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one ~66ch reading column on ledger paper; live figures break out to 72rem.
+   The paper's own picture: a spreadsheet whose rows are sentences and whose columns are days. */
+:root {
+  --paper: #f3f5f1;
+  --sheet: #fbfcfa;
+  --ink: #18211c;
+  --ink-2: #4c5a53;
+  --ink-3: #6f7c75;
+  --rule: #d3dbd4;
+  --rule-2: #e5eae5;
+  --accent: #0b6b52;
+  --accent-ink: #ffffff;
+  --accent-soft: #dceae3;
+  --false: #256abf;
+  --mid: #e9ece8;
+  --true: #d23f2e;
+  --s-paper: #eb6834;
+  --s-fast: #6250d6;
+  --code-bg: #edf1ec;
+  --f-display: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --col: 41rem;
+  --wide: 72rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101512; --sheet: #161c18; --ink: #e3e9e4; --ink-2: #a8b4ad; --ink-3: #85928a;
+    --rule: #2c3630; --rule-2: #1f2722; --accent: #52c79e; --accent-ink: #0a140f; --accent-soft: #1b3028;
+    --false: #5b9be8; --mid: #2d332f; --true: #ee6a55; --s-paper: #d95926; --s-fast: #9085e9; --code-bg: #131915;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101512; --sheet: #161c18; --ink: #e3e9e4; --ink-2: #a8b4ad; --ink-3: #85928a;
+  --rule: #2c3630; --rule-2: #1f2722; --accent: #52c79e; --accent-ink: #0a140f; --accent-soft: #1b3028;
+  --false: #5b9be8; --mid: #2d332f; --true: #ee6a55; --s-paper: #d95926; --s-fast: #9085e9; --code-bg: #131915;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--f-body); font-size: 1.0625rem; line-height: 1.6;
+  padding-inline: 16px; padding-block: 0 4rem;
+  -webkit-font-smoothing: antialiased;
+}
+main { display: flex; flex-direction: column; align-items: center; }
+main > * { width: 100%; max-width: var(--col); }
+main > .wide { max-width: var(--wide); }
+h1, h2, h3, .eyebrow, .label, button, select, .stat b { font-family: var(--f-display); }
+h1 {
+  font-size: clamp(2.4rem, 6vw, 4.1rem); line-height: 1.02; letter-spacing: -0.02em;
+  font-weight: 650; font-stretch: 82%; margin: 0; text-wrap: balance;
+}
+h2 {
+  font-size: 1.65rem; line-height: 1.15; font-weight: 640; font-stretch: 88%;
+  margin: 3.2rem 0 0.6rem; text-wrap: balance; letter-spacing: -0.01em;
+}
+h3 { font-size: 1.1rem; font-weight: 620; margin: 1.6rem 0 0.3rem; }
+p { margin: 0.7rem 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.eyebrow {
+  text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; font-weight: 600;
+  color: var(--accent); margin: 0 0 0.8rem;
+}
+header { padding-block: 3.2rem 1.4rem; }
+.lede { font-size: 1.22rem; line-height: 1.5; color: var(--ink-2); margin-top: 1.1rem; max-width: 38rem; }
+.byline { font-family: var(--f-mono); font-size: 0.78rem; color: var(--ink-3); margin-top: 1rem; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+.muted { color: var(--ink-2); }
+small, .small { font-size: 0.85rem; }
+
+/* figures */
+figure { margin: 1.6rem 0; }
+.sheet {
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px;
+  padding-inline: 18px; padding-block: 16px;
+}
+figcaption { font-size: 0.9rem; color: var(--ink-2); margin-top: 0.6rem; line-height: 1.5; }
+.figtitle { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.figtitle h3 { margin: 0; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 12px; }
+button, select {
+  font-size: 0.86rem; font-weight: 560; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--sheet); color: var(--ink);
+  padding: 6px 12px; line-height: 1.2;
+}
+button:hover, select:hover { border-color: var(--ink-3); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary:hover { filter: brightness(1.06); }
+button:disabled { opacity: 0.5; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--rule); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+label.inline { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 0.86rem; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-bottom: 12px; }
+.stat { padding: 8px 10px; border-right: 1px solid var(--rule-2); min-width: 0; }
+.stat:last-child { border-right: 0; }
+.stat .label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 600; }
+.stat b { display: block; font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .ok { font-family: var(--f-mono); font-size: 0.75rem; color: var(--ink-2); }
+
+.canvas-wrap { position: relative; width: 100%; }
+canvas { display: block; width: 100%; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-family: var(--f-display); font-size: 0.8rem; color: var(--ink-2); margin-top: 10px; }
+.ramp { display: inline-block; width: 120px; height: 10px; border-radius: 2px; vertical-align: middle; background: linear-gradient(90deg, var(--false), var(--mid), var(--true)); }
+.swatch { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; min-width: 9rem; max-width: 16rem;
+  background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); padding: 6px 9px; font-family: var(--f-display); font-size: 0.8rem; line-height: 1.35;
+}
+.tip b { font-variant-numeric: tabular-nums; }
+
+/* tables */
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+th { font-family: var(--f-display); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); border-bottom-color: var(--rule); }
+td.num, th.num { text-align: right; padding-right: 14px; }
+.changes td:first-child { font-family: var(--f-display); font-weight: 600; width: 22%; }
+.changes td:nth-child(2) { color: var(--ink-2); width: 33%; }
+.log td { font-family: var(--f-mono); font-size: 0.78rem; padding-block: 3px; }
+
+.math { overflow-x: auto; overflow-y: hidden; padding-block: 2px; }
+ol.proof { padding-left: 1.3rem; }
+ol.proof li { margin: 0.5rem 0; padding-left: 0.3rem; }
+ol.proof li::marker { font-family: var(--f-display); font-weight: 650; color: var(--accent); }
+
+.callout { border-left: 3px solid var(--accent); padding-left: 14px; margin: 1.2rem 0; }
+
+.lemma-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 10px; margin-top: 10px; }
+.lemma-out > div { border: 1px solid var(--rule-2); border-radius: 4px; padding: 8px 10px; min-width: 0; }
+.lemma-out .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 600; display: block; }
+.lemma-out .v { font-family: var(--f-mono); font-size: 0.95rem; overflow-wrap: anywhere; }
+
+svg text { font-family: var(--f-display); }
+.ax { stroke: var(--rule); stroke-width: 1; }
+.grid { stroke: var(--rule-2); stroke-width: 1; }
+.tick { fill: var(--ink-3); font-size: 11px; }
+.axlabel { fill: var(--ink-2); font-size: 12px; }
+.lbl { fill: var(--ink); font-size: 12px; font-weight: 600; }
+.ln-paper { stroke: var(--s-paper); stroke-width: 2; fill: none; }
+.ln-fast { stroke: var(--s-fast); stroke-width: 2; fill: none; }
+.pt-paper { fill: var(--s-paper); stroke: var(--sheet); stroke-width: 2; }
+.pt-fast { fill: var(--s-fast); stroke: var(--sheet); stroke-width: 2; }
+.hit { fill: transparent; cursor: default; }
+
+.code-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+pre.code {
+  background: var(--code-bg); border: 1px solid var(--rule); border-radius: 6px;
+  max-height: 34rem; overflow: auto; margin: 0.8rem 0;
+  padding: 14px 16px; font-family: var(--f-mono); font-size: 0.78rem; line-height: 1.55; tab-size: 2;
+}
+pre.code .c { color: var(--ink-3); }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.86rem; color: var(--ink-2); }
+footer ol { padding-left: 1.2rem; }
+@media (max-width: 560px) {
+  body { font-size: 1rem; }
+  .sheet { padding-inline: 12px; }
+  .changes td:first-child { width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<main>
+<header>
+  <p class="eyebrow">Logical Induction, §5, made efficient</p>
+  <h1>Faster Logical Induction</h1>
+  <p class="lede">The market-of-traders algorithm from Garrabrant et al.'s <em>Logical Induction</em>, rebuilt so it runs in this page. It keeps the paper's guarantee: no efficiently computable trader can exploit its prices. Every exponential step is gone except one search, and that one is PPAD-hard in general.</p>
+  <p class="byline">Based on arXiv:1609.03543v5 · full proofs and a Python reference implementation accompany this page in REPORT.md</p>
+</header>
+
+<section class="wide" aria-labelledby="ledger-title">
+  <div class="sheet">
+    <div class="figtitle">
+      <h3 id="ledger-title">The belief ledger, filled in live</h3>
+      <span class="small muted">13 traders · prices set by LIA-fast in your browser</span>
+    </div>
+    <div class="controls">
+      <button id="run" class="primary" type="button">Pause</button>
+      <button id="step" type="button">Advance one day</button>
+      <button id="restart" type="button">Start over</button>
+      <span class="seg" role="group" aria-label="Speed">
+        <button type="button" data-speed="4" aria-pressed="false">Slow</button>
+        <button type="button" data-speed="25" aria-pressed="true">Steady</button>
+        <button type="button" data-speed="max" aria-pressed="false">Flat out</button>
+      </span>
+    </div>
+    <div class="stats" aria-live="off">
+      <div class="stat"><span class="label">Day</span><b id="st-day">0</b></div>
+      <div class="stat"><span class="label">Sentences priced today</span><b id="st-d">–</b></div>
+      <div class="stat"><span class="label">Solver that found the prices</span><b id="st-method">–</b></div>
+      <div class="stat"><span class="label">Firm's best profit so far</span><b id="st-firm">–</b><span class="ok" id="st-firm-ok"></span></div>
+      <div class="stat"><span class="label">Time per day</span><b id="st-ms">–</b></div>
+    </div>
+    <div class="canvas-wrap" id="ledger-wrap">
+      <canvas id="ledger" role="img" aria-label="Heatmap of market prices: one row per sentence, one column per day"></canvas>
+      <div class="tip" id="ledger-tip" hidden></div>
+    </div>
+    <div class="legend">
+      <span>priced as false <span class="ramp" aria-hidden="true"></span> priced as true</span>
+      <span>Right-hand column: what the deductive process has decided so far.</span>
+    </div>
+    <div class="table-wrap">
+      <table class="log" aria-label="Last few days">
+        <thead><tr><th>day</th><th class="num">d</th><th>solver</th><th class="num">firm evaluations</th><th class="num">oracle calls</th><th class="num">gap</th><th class="num">tolerance ε</th><th class="num">ms</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="small muted" style="max-width: var(--col); margin-inline: auto;">The paper pictures a reasoner as someone filling in a spreadsheet, one column per day, with a row for every sentence. Here each cell is that day's price. The atoms a0 to a7 have a hidden truth that the deductive process reveals one by one, and two disjunctions leak out earlier. The row fₙ holds a brand-new sentence every day, which an informed trader knows and a stubborn trader disputes. The row χₙ is a liar sentence, true exactly when its own price that day is below ½; its price settles at ½. Two traders, a "rotator" and an "expander", make the price-finding problem non-monotone on purpose. Another buys any combination that the proved facts already settle, which is what moves the last two combination rows.</p>
+</section>
+
+<section aria-labelledby="algo">
+  <h2 id="algo">How the algorithm works</h2>
+  <p>A <em>trader</em> looks at today's prices and orders a trade: so many shares of each sentence, chosen by a continuous formula of the prices. A trader <em>exploits</em> the market if its worth, judged in every world still consistent with what has been proved, is bounded below but unbounded above. A <em>logical inductor</em> is a market that no polynomial-time trader exploits.</p>
+  <p>The paper builds one, LIA, from three pieces and one recursion:</p>
+  <div class="math">\[ \mathbb P_n \;=\; \mathrm{MarketMaker}_n\big(\mathrm{TradingFirm}_n(\mathbb P_{&lt;n}),\ \mathbb P_{&lt;n}\big). \]</div>
+  <p><strong>Budgeter</strong> scales a trader down so it never loses more than a budget \(b\). <strong>TradingFirm</strong> adds up every trader at every budget with prior weights, giving one supertrader. <strong>MarketMaker</strong> then finds prices at which that supertrader can make almost nothing today, in any world. That last step is a fixed-point problem, solvable because trades are continuous in prices.</p>
+  <p>As written, every piece is brute force. MarketMaker enumerates all rational price vectors and checks each against all \(2^d\) truth assignments. Budgeter re-checks every past day for every budget over \(2^{|S'|}\) worlds, where \(S'\) is every sentence the trader has ever touched. TradingFirm sums over a budget bound \(C_n\) that can be doubly exponential.</p>
+</section>
+
+<section aria-labelledby="changes">
+  <h2 id="changes">What changed</h2>
+  <div class="table-wrap">
+    <table class="changes">
+      <thead><tr><th>Step</th><th>Paper</th><th>LIA-fast</th></tr></thead>
+      <tbody>
+        <tr><td>Checking a price vector</td><td>all \(2^d\) worlds</td><td>a closed form with \(d\) terms (Lemma 1, below)</td></tr>
+        <tr><td>Tolerance on day \(n\)</td><td>\(2^{-n}\)</td><td>\(10^{-3}/n^2\). Any sequence with a finite sum works, and doubles stay precise enough</td></tr>
+        <tr><td>Searching for prices</td><td>enumerate every rational price vector, with no bound</td><td>Newton, extragradient and Gauss–Seidel, each answer verified exactly; then a box-subdivision search that always succeeds within \(2(\Lambda/\varepsilon)^d+1\) evaluations</td></tr>
+        <tr><td>Has this budget run out?</td><td>every budget, every past day, \(2^{|S'|}\) worlds</td><td>one minimisation over consistent worlds per trader per day, kept as a running maximum</td></tr>
+        <tr><td>How far to scale a trade</td><td>an infimum over \(2^{|S'|}\) worlds at every price tried</td><td>Newton–Dinkelbach: \(O(p^2\log p)\) calls to a MaxSAT-style oracle</td></tr>
+        <tr><td>Budget levels per trader</td><td>\(C_n\), possibly \(2^{2^{\mathrm{poly}(n)}}\)</td><td>only the few levels still alive and not saturated; the rest is an exact rational tail</td></tr>
+        <tr><td>Prior weights</td><td>\(2^{-k}\) per trader, \(2^{-b}\) per budget</td><td>\(\frac{1}{k(k+1)}\) per trader, a telescoping \(u_j\) per budget \(2^j\)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Lemma 1: the world check collapses</h3>
+  <p>In the paper a "world" is any truth assignment, consistent or not. A trade's value in a world is linear and coordinate-separable, so the best world can be read off sentence by sentence:</p>
+  <div class="math">\[ \max_{\mathbb W}\ \mathbb W\big(T(p)\big)\;=\;\sum_{\phi}\Big(T_\phi(p)^{+}\,(1-p_\phi)\;+\;T_\phi(p)^{-}\,p_\phi\Big). \]</div>
+  <p>The right side is zero exactly at the paper's fixed points, so MarketMaker becomes: find \(p\in[0,1]^d\) where this sum is at most \(\varepsilon_n\). Try it on random trades:</p>
+  <div class="sheet">
+    <div class="controls" style="margin-top:0">
+      <label class="inline" for="lem-d">Sentences \(d\) <input id="lem-d" type="range" min="2" max="22" value="16"> <b id="lem-d-out" class="mono">16</b></label>
+      <button id="lem-go" class="primary" type="button">Draw a random trade and compare</button>
+    </div>
+    <div class="lemma-out">
+      <div><span class="label">Closed form (Lemma 1)</span><span class="v" id="lem-fast">–</span></div>
+      <div><span class="label">Every world, as in the paper</span><span class="v" id="lem-slow">–</span></div>
+      <div><span class="label">Speed-up</span><span class="v" id="lem-ratio">–</span></div>
+    </div>
+  </div>
+
+  <h3>Budgets without enumeration</h3>
+  <p>For trader \(k\) with raw holdings \(H^k_{n-1}\) and today's trade \(S^k_n(p)\), the budgeted copy at budget \(b\) trades \(\alpha\cdot S^k_n(p)\) with</p>
+  <div class="math">\[ \alpha^{k,b}_n(p)=\max\Big\{\alpha\in[0,1]:\ \min_{\mathbb W\in \mathrm{PC}(D_n)}\big[\,b+\mathbb W(H^k_{n-1})+\alpha\,\mathbb W(S^k_n(p))\,\big]\ge 0\Big\}, \]</div>
+  <p>which is the paper's own scaling factor. The function inside is concave and piecewise linear in \(\alpha\), so Newton's method lands on the answer in a few steps. Each step is one linear minimisation over worlds consistent with \(D_n\). The only change is a margin: a copy stays active while the trader's worst loss so far is at most \(b/2\), not \(b\). That keeps \(\alpha\) Lipschitz.</p>
+  <p>The firm then weighs trader \(k\) at budget \(2^j\) by</p>
+  <div class="math">\[ \frac{1}{k(k+1)}\cdot u_j,\qquad u_j=\frac{2^{-j}}{(j+1)^2}-\frac{2^{-j-1}}{(j+2)^2}. \]</div>
+  <p>The tail \(\sum_{j\ge J}u_j=2^{-J}/(J+1)^2\) is an exact rational number, so the infinite sum over budgets is computed exactly with a handful of terms.</p>
+</section>
+
+<section aria-labelledby="proof">
+  <h2 id="proof">Why it is still a logical inductor</h2>
+  <p class="callout"><strong>Theorem.</strong> For every deductive process \(D\), the prices produced by LIA-fast satisfy the logical induction criterion relative to \(D\). So they inherit every property proved in §4 of the paper: convergence, coherence, provability induction, calibration, non-dogmatism, self-trust.</p>
+  <p>The argument follows the paper, step by step:</p>
+  <ol class="proof">
+    <li>A budgeted copy never loses more than \(b\) in any world consistent with \(D_n\). A trader whose losses stay below \(b/2\) passes through its copy unchanged.</li>
+    <li>Suppose an efficient trader exploits the market with losses below \(b_0\). Its copy at budget \(2^j\ge 2b_0\) is the trader itself. Every other copy is bounded below by its budget, and the weighted budgets sum to \(B=\tfrac{1+\zeta(2)}{2}\). So the firm also exploits the market: worth at least \(-B\), unbounded above.</li>
+    <li>MarketMaker picks prices at which the firm's best possible profit today is at most \(\varepsilon_n\), in every world. Lemma 1 makes that cheap to check.</li>
+    <li>Summing over days, the firm's profit never exceeds \(\sum_n\varepsilon_n<\infty\). That contradicts step 2, so no efficient trader exploits the market.</li>
+  </ol>
+  <p>The ledger above checks step 4 as it runs: the stat "Firm's best profit so far" is \(\sum_n \max_{\mathbb W}\mathbb W(TF_n)\), and it stays under \(\sum_n\varepsilon_n\).</p>
+</section>
+
+<section class="wide" aria-labelledby="late">
+  <div style="max-width: var(--col); margin-inline: auto;">
+    <h2 id="late">Learning from a trader late in the list</h2>
+    <p>A logical inductor enumerates every polynomial-time trader. The prior weight on trader \(k\) bounds how much that trader can take from the market before its knowledge is priced in. If its plausible losses never exceed \(b_0\), then in every consistent world</p>
+    <div class="math">\[ \mathbb W(H^k_n)\;\le\;(E+B)\,k(k+1)\cdot 8b_0\big(\log_2(4b_0)+1\big)^2\qquad\text{instead of}\qquad 3\cdot 2^{\,k+\lfloor b_0\rfloor+1}. \]</div>
+    <p>In a standard enumeration, \(k\) grows exponentially with the length of the trader's program. So the paper's bound is doubly exponential in program length, and the new one is singly exponential. The contest below makes this visible. A stubborn trader at position 1 holds each day's new sentence at ½. An always-right trader at position \(k\) disagrees. We count the days until the market prices the sentence above 0.75 and keeps it there for 20 days.</p>
+  </div>
+  <div class="sheet" style="margin-top: 1rem;">
+    <div class="figtitle">
+      <h3>Days until the market follows the right trader</h3>
+      <span class="legend" style="margin:0">
+        <span><span class="swatch" style="background: var(--s-paper)"></span>Paper's weights</span>
+        <span><span class="swatch" style="background: var(--s-fast)"></span>LIA-fast weights</span>
+      </span>
+    </div>
+    <div class="canvas-wrap" id="duel-chart-wrap">
+      <svg id="duel-chart" viewBox="0 0 960 340" width="100%" role="img" aria-label="Days to learn versus trader position k, log scale, for both weightings"></svg>
+      <div class="tip" id="duel-tip" hidden></div>
+    </div>
+    <p class="small muted" style="margin-top: 4px;">Log scale. Python reference run; the live runner below reproduces these numbers exactly.</p>
+
+    <h3 style="margin-top: 1.4rem;">Run the contest yourself</h3>
+    <div class="controls">
+      <label class="inline" for="duel-k">Position k
+        <select id="duel-k">
+          <option>2</option><option>3</option><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option><option>14</option><option>16</option><option>20</option><option>24</option><option>32</option>
+        </select>
+      </label>
+      <span class="seg" role="group" aria-label="Weights">
+        <button type="button" data-w="fast" aria-pressed="true">LIA-fast weights</button>
+        <button type="button" data-w="paper" aria-pressed="false">Paper's weights</button>
+      </span>
+      <button id="duel-go" class="primary" type="button">Run</button>
+      <button id="duel-stop" type="button" disabled>Stop</button>
+    </div>
+    <p class="small" id="duel-status" style="margin: 4px 0 8px;">Choose a position and press Run. Prices of each day's new sentence are drawn below.</p>
+    <div class="canvas-wrap" id="trace-wrap"><canvas id="trace" role="img" aria-label="Price of each day's new sentence over the run"></canvas></div>
+    <div class="table-wrap">
+      <table aria-label="Days until the market follows the right trader">
+        <thead><tr><th>k</th><th class="num">paper's weights</th><th class="num">LIA-fast weights</th></tr></thead>
+        <tbody id="duel-table"></tbody>
+      </table>
+    </div>
+    <p class="small muted">For small \(k\) the paper's weights win. Its budget weights \(2^{-b}\) fall fast, so a losing trader loses influence sooner. From \(k\approx7\) on, the exponential prior dominates.</p>
+  </div>
+</section>
+
+<section aria-labelledby="hard">
+  <h2 id="hard">What stays hard</h2>
+  <p>One step keeps an exponential worst case: finding prices. That is not an artefact of the method. Any price-finding routine also finds approximate Brouwer fixed points. Give it the one-trader strategy \(T_f(p)=\sum_i (f_i(p)-p_i)(\phi_i-\phi_i^{*n})\) for a map \(f:[0,1]^d\to[0,1]^d\), and</p>
+  <div class="math">\[ \mathrm{gap}_{T_f}(p)\;\ge\;\lVert f(p)-p\rVert_2^2 . \]</div>
+  <ul>
+    <li>Every gate of Rubinstein's generalized circuits is an expressible feature. So the price-finding step is PPAD-hard even at a constant tolerance, on general inputs.</li>
+    <li>By Chen and Deng's query bound, any black-box method needs on the order of \((M/(d^2\sqrt\varepsilon))^{d-1}\) evaluations in dimension \(d\).</li>
+    <li>The exact budget test is coNP-hard: with nothing yet proved, it decides whether a formula is a tautology. LIA-fast calls an oracle polynomially many times instead of enumerating worlds, so a SAT solver can take the load.</li>
+  </ul>
+  <p>These limits are about the subproblems on general inputs. Whether every logical inductor must pay them is open. In practice the verified heuristics found prices on every day of every scenario here. On deliberately hard random instances, they solve all of them up to 5 sentences and about two thirds at 20 to 40.</p>
+</section>
+
+<section aria-labelledby="bench">
+  <h2 id="bench">Measured against the paper's version</h2>
+  <p>The paper's algorithm, run as written in Python on a 3-trader scenario where one new sentence appears each day:</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>day</th><th class="num">paper: seconds</th><th class="num">paper: world evaluations</th><th class="num">LIA-fast: seconds</th></tr></thead>
+      <tbody>
+        <tr><td>5</td><td class="num">0.004</td><td class="num">4,430</td><td class="num">0.0015</td></tr>
+        <tr><td>10</td><td class="num">0.76</td><td class="num">1,721,847</td><td class="num">0.0011</td></tr>
+        <tr><td>15</td><td class="num">2.7</td><td class="num">19,111,105</td><td class="num">0.0008</td></tr>
+        <tr><td>20</td><td class="num">144</td><td class="num">1,135,007,453</td><td class="num">0.0008</td></tr>
+        <tr><td>22</td><td class="num">764</td><td class="num">5,516,636,685</td><td class="num">0.0008</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Its cost doubles daily because the set of sentences each trader has touched grows by one a day, and the paper enumerates every truth assignment of that set. It stopped at its time limit after day 22. On the 12-trader version of the ledger above, one evaluation of the paper's trading firm on day 1000 would range over about \(10^{306}\) terms, with 27,585 budget levels per trader. LIA-fast evaluated no unsaturated budget level at all on that run; the exact tail covered every one.</p>
+</section>
+
+<section aria-labelledby="code">
+  <div class="code-head">
+    <h2 id="code">The code running on this page</h2>
+    <button id="copy" type="button">Copy code</button>
+  </div>
+  <p>Everything above is driven by this script, shown exactly as the page runs it. It is a direct port of the Python reference implementation and gives identical day counts in the contest.</p>
+  <pre class="code" id="src" tabindex="0" aria-label="Engine source code"></pre>
+</section>
+
+<footer>
+  <p><strong>References</strong></p>
+  <ol>
+    <li>S. Garrabrant, T. Benson-Tilsen, A. Critch, N. Soares, J. Taylor. <a href="https://arxiv.org/abs/1609.03543">Logical Induction</a>. arXiv:1609.03543 (2016–2020).</li>
+    <li>A. Rubinstein. Inapproximability of Nash equilibrium. SIAM J. Comput. 47(3), 2018. arXiv:1405.3322.</li>
+    <li>X. Chen, X. Deng. Matching algorithmic bounds for finding a Brouwer fixed point. J. ACM 55(3), 2008.</li>
+    <li>T. Radzik. Fractional combinatorial optimization. Handbook of Combinatorial Optimization, 1998; Q. Wang, X. Yang, J. Zhang, J. Global Optim. 34, 2006; D. Dadush, Z. Koh, B. Natura, L. Végh, arXiv:2004.08634.</li>
+    <li>D. Foster, S. Hart. Forecast hedging and calibration. J. Political Economy 129(12), 2021.</li>
+  </ol>
+</footer>
+</main>
+
+<script id="engine">
+"use strict";
+// LIA-fast: a logical inductor (Garrabrant et al. 2016, Sec. 5) with the speedups described above.
+// Port of lia.py. Pure JS, no dependencies.
+
+// ---------------------------------------------------------------- sentences
+const SENT = new Map();
+function intern(key, op, a, b, i) {
+  let s = SENT.get(key);
+  if (!s) { s = { key, op, a, b, i, at: null }; SENT.set(key, s); }
+  return s;
+}
+const atom = i => intern("a" + i, "a", null, null, i);
+const neg = s => intern("¬" + s.key, "~", s, null);
+const conj = (s, t) => intern("(" + s.key + "∧" + t.key + ")", "&", s, t);
+const disj = (s, t) => intern("(" + s.key + "∨" + t.key + ")", "|", s, t);
+
+function atomsOf(s) {
+  if (!s.at) {
+    if (s.op === "a") s.at = [s.i];
+    else if (s.op === "~") s.at = atomsOf(s.a);
+    else s.at = [...new Set([...atomsOf(s.a), ...atomsOf(s.b)])];
+  }
+  return s.at;
+}
+function holds(s, asg) {
+  switch (s.op) {
+    case "a": return asg.get(s.i);
+    case "~": return !holds(s.a, asg);
+    case "&": return holds(s.a, asg) && holds(s.b, asg);
+    default: return holds(s.a, asg) || holds(s.b, asg);
+  }
+}
+
+// ---------------------------------------------------------------- PC(D)
+// Worlds propositionally consistent with D, queried on finite sets of sentences.  Atoms are
+// linked when they share a query sentence or a sentence of D; a linear objective over PC(D)
+// then splits exactly into independent per-component minima.
+const COUNT = { oracle: 0 };
+class WorldSpace {
+  constructor(D) {
+    this.fixed = new Map(); this.cons = []; this.byAtom = new Map(); this.cache = new Map();
+    this.add(D || []);
+  }
+  add(D) {
+    for (const s of D) {
+      if (s.op === "a") this.fix(s.i, true);
+      else if (s.op === "~" && s.a.op === "a") this.fix(s.a.i, false);
+      else {
+        this.cons.push(s);
+        for (const a of atomsOf(s)) {
+          if (!this.byAtom.has(a)) this.byAtom.set(a, []);
+          this.byAtom.get(a).push(s);
+        }
+      }
+    }
+    this.cache.clear();
+  }
+  fix(a, v) {
+    if (this.fixed.has(a) && this.fixed.get(a) !== v) throw new Error("deductive process is inconsistent");
+    this.fixed.set(a, v);
+  }
+  components(sentences) {
+    const uniq = [...new Set(sentences)];
+    const key = uniq.map(s => s.key).sort().join("|");
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const parent = new Map();
+    const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    const union = (x, y) => {
+      if (!parent.has(x)) parent.set(x, x);
+      if (!parent.has(y)) parent.set(y, y);
+      const rx = find(x), ry = find(y);
+      if (rx !== ry) parent.set(rx, ry);
+    };
+    const frontier = [];
+    for (const s of uniq) {
+      const at = atomsOf(s);
+      for (const a of at) { if (!parent.has(a)) parent.set(a, a); frontier.push(a); }
+      for (const a of at) union(at[0], a);
+    }
+    const seen = new Set(), used = [], visited = new Set();
+    while (frontier.length) {
+      const a = frontier.pop();
+      if (visited.has(a)) continue;
+      visited.add(a);
+      for (const c of this.byAtom.get(a) || []) {
+        if (seen.has(c)) continue;
+        seen.add(c); used.push(c);
+        const ca = atomsOf(c);
+        for (const b of ca) { union(ca[0], b); if (!visited.has(b)) frontier.push(b); }
+      }
+    }
+    const groups = new Map();
+    const g = r => { if (!groups.has(r)) groups.set(r, { atoms: [], sents: [], cons: [] }); return groups.get(r); };
+    for (const a of parent.keys()) g(find(a)).atoms.push(a);
+    for (const s of uniq) g(find(atomsOf(s)[0])).sents.push(s);
+    for (const c of used) g(find(atomsOf(c)[0])).cons.push(c);
+    const comps = [];
+    for (const { atoms, sents, cons } of groups.values()) {
+      if (!sents.length) continue;
+      const free = atoms.filter(a => !this.fixed.has(a));
+      if (free.length > 22) throw new Error("component with " + free.length + " free atoms");
+      const asg = new Map();
+      for (const a of atoms) if (this.fixed.has(a)) asg.set(a, this.fixed.get(a));
+      const vecs = new Map();
+      for (let m = 0; m < (1 << free.length); m++) {
+        for (let i = 0; i < free.length; i++) asg.set(free[i], ((m >> i) & 1) === 1);
+        if (cons.every(c => holds(c, asg))) {
+          const v = sents.map(s => (holds(s, asg) ? 1 : 0));
+          vecs.set(v.join(""), v);
+        }
+      }
+      if (!vecs.size) throw new Error("PC(D) is empty");
+      comps.push({ sents, vecs: [...vecs.values()] });
+    }
+    this.cache.set(key, comps);
+    return comps;
+  }
+  // min over W in PC(D) of  cash + sum_phi coef(phi) W(phi)
+  minLinear(cash, coef /* Map sentence -> number */) {
+    COUNT.oracle++;
+    let tot = cash;
+    for (const { sents, vecs } of this.components([...coef.keys()])) {
+      const c = sents.map(s => coef.get(s));
+      let best = Infinity;
+      for (const v of vecs) { let x = 0; for (let i = 0; i < v.length; i++) if (v[i]) x += c[i]; if (x < best) best = x; }
+      tot += best;
+    }
+    return tot;
+  }
+}
+
+class DeductiveProcess {
+  // D_n = sentences revealed on days <= n; reveal(n, history) may look at P_1..P_{n-1}.
+  constructor(reveal) { this.reveal = reveal; this.D = new Set(); this.day = 0; this.ws = new WorldSpace([]); }
+  advance(n, history) {
+    const add = this.reveal(n, history);
+    for (const s of add) this.D.add(s);
+    this.day = n;
+    this.ws.add(add);
+    return this.ws;
+  }
+}
+
+// ---------------------------------------------------------------- expressible features
+// Rationals, price features, +, *, max and safe reciprocation 1/max(1,x)  (paper, Def. 3.4.4).
+const lift = x => (typeof x === "number" ? { t: "c", q: x } : x);
+const Price = (s, day) => ({ t: "p", s, day });
+const add = (a, b) => ({ t: "+", a: lift(a), b: lift(b) });
+const mul = (a, b) => ({ t: "*", a: lift(a), b: lift(b) });
+const sub = (a, b) => add(a, mul(-1, b));
+const fmax = (a, b) => ({ t: "max", a: lift(a), b: lift(b) });
+const fmin = (a, b) => mul(-1, fmax(mul(-1, a), mul(-1, b)));
+const clip = (x, lo, hi) => fmin(fmax(x, lo), hi);
+const safeRecip = a => ({ t: "rcp", a: lift(a) });
+
+// Compile an n-strategy {sentence: feature} into a register program.  Past prices fold to
+// constants; interval bounds and l_inf-Lipschitz constants (in today's prices) come from
+// structural induction, exactly as the paper bounds C_n.
+class Strategy {
+  constructor(coeffs /* Map sentence -> feature */, n, history) {
+    this.sents = [...coeffs.keys()];
+    const prog = [], lo = [], hi = [], lip = [], memo = new Map();
+    const reg = node => {
+      if (memo.has(node)) return memo.get(node);
+      let r, b0, b1, L;
+      if (node.t === "c") { r = prog.length; prog.push([0, node.q]); b0 = b1 = node.q; L = 0; }
+      else if (node.t === "p") {
+        if (node.day < n) {
+          const v = node.day >= 1 ? (history[node.day - 1].get(node.s) ?? 0) : 0;
+          r = prog.length; prog.push([0, v]); b0 = b1 = v; L = 0;
+        } else if (node.day === n) { r = prog.length; prog.push([1, node.s]); b0 = 0; b1 = 1; L = 1; }
+        else throw new Error("feature refers to a future price");
+      } else if (node.t === "rcp") {
+        const a = reg(node.a);
+        r = prog.length; prog.push([5, a]);
+        b0 = 1 / Math.max(1, hi[a]); b1 = 1 / Math.max(1, lo[a]); L = lip[a];
+      } else {
+        const a = reg(node.a), b = reg(node.b);
+        r = prog.length;
+        if (node.t === "+") { prog.push([2, a, b]); b0 = lo[a] + lo[b]; b1 = hi[a] + hi[b]; L = lip[a] + lip[b]; }
+        else if (node.t === "*") {
+          prog.push([3, a, b]);
+          const pr = [lo[a] * lo[b], lo[a] * hi[b], hi[a] * lo[b], hi[a] * hi[b]];
+          b0 = Math.min(...pr); b1 = Math.max(...pr);
+          L = lip[a] * Math.max(Math.abs(lo[b]), Math.abs(hi[b])) + lip[b] * Math.max(Math.abs(lo[a]), Math.abs(hi[a]));
+        } else { prog.push([4, a, b]); b0 = Math.max(lo[a], lo[b]); b1 = Math.max(hi[a], hi[b]); L = Math.max(lip[a], lip[b]); }
+      }
+      lo[r] = b0; hi[r] = b1; lip[r] = L; memo.set(node, r);
+      return r;
+    };
+    this.outs = this.sents.map(s => reg(lift(coeffs.get(s))));
+    this.prog = prog;
+    this.R = new Float64Array(prog.length);
+    this.bounds = this.outs.map(o => Math.max(Math.abs(lo[o]), Math.abs(hi[o])));
+    this.lips = this.outs.map(o => lip[o]);
+    this.valueLip = this.bounds.reduce((acc, B, i) => acc + B + this.lips[i], 0);
+  }
+  eval(P /* Map sentence -> today's price */) {
+    const R = this.R, prog = this.prog;
+    for (let i = 0; i < prog.length; i++) {
+      const ins = prog[i];
+      switch (ins[0]) {
+        case 0: R[i] = ins[1]; break;
+        case 1: R[i] = P.get(ins[1]) ?? 0; break;
+        case 2: R[i] = R[ins[1]] + R[ins[2]]; break;
+        case 3: R[i] = R[ins[1]] * R[ins[2]]; break;
+        case 4: R[i] = R[ins[1]] > R[ins[2]] ? R[ins[1]] : R[ins[2]]; break;
+        default: { const x = R[ins[1]]; R[i] = 1 / (x > 1 ? x : 1); }
+      }
+    }
+    return this.outs.map(o => R[o]);
+  }
+}
+
+// ---------------------------------------------------------------- Lemma 1: the world-free check
+// max over ALL worlds W of W(T(p)) = sum_phi T_phi^+ (1 - p_phi) + T_phi^- p_phi
+function gap(t, p) {
+  let g = 0;
+  for (let i = 0; i < t.length; i++) g += t[i] > 0 ? t[i] * (1 - p[i]) : -t[i] * p[i];
+  return g;
+}
+// the paper's check, literally: enumerate all 2^d worlds
+function maxOverAllWorlds(t, p) {
+  let cash = 0;
+  for (let i = 0; i < t.length; i++) cash -= t[i] * p[i];
+  let best = -Infinity;
+  for (let m = 0; m < (1 << t.length); m++) {
+    let v = cash;
+    for (let i = 0; i < t.length; i++) if ((m >> i) & 1) v += t[i];
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------- weights and budgets
+// fast : trader weight 1/(k(k+1)); budget 2^j with weight u_j = a_j - a_{j+1}, a_j = 2^-j/(j+1)^2
+//        (telescoping: every tail sum is the rational a_J); alive while M <= b/2.
+// paper: trader weight 2^-k; integer budget b with weight 2^-b; alive while M < b.
+const FastSchedule = {
+  name: "fast",
+  traderWeight: k => 1 / (k * (k + 1)),
+  budget: j => 2 ** j,
+  a: j => 2 ** -j / ((j + 1) * (j + 1)),
+  levelWeight(j) { return this.a(j) - this.a(j + 1); },
+  firstAlive: M => (M <= 0.5 ? 0 : Math.max(0, Math.ceil(Math.log2(2 * M) - 1e-12))),
+  firstSaturated: L => (L <= 1 ? 0 : Math.max(0, Math.ceil(Math.log2(L) - 1e-12))),
+  tail(j) { return j < 1000 ? this.a(j) : 0; },
+};
+const PaperSchedule = {
+  name: "paper",
+  traderWeight: k => 2 ** -k,
+  budget: j => j,
+  levelWeight: j => 2 ** -j,
+  firstAlive: M => Math.max(1, Math.floor(M) + 1),
+  firstSaturated: L => Math.max(1, Math.ceil(L)),
+  tail: j => 2 ** (1 - j),
+};
+
+// ---------------------------------------------------------------- one trader inside the firm, one day
+class DayTrader {
+  constructor(st, strat, ws, sched) {
+    this.st = st; this.strat = strat; this.sched = sched;
+    this.w = sched.traderWeight(st.k);
+    this.jlo = sched.firstAlive(st.M);
+    const spos = new Map(strat.sents.map((s, i) => [s, i]));
+    this.comps = ws.components([...st.H.keys(), ...strat.sents]).map(({ sents, vecs }) => ({
+      vecs,
+      hv: vecs.map(v => sents.reduce((acc, s, i) => acc + (st.H.get(s) ?? 0) * v[i], 0)),
+      cols: sents.map((s, i) => [spos.get(s), i]).filter(([si]) => si !== undefined),
+    }));
+  }
+  // argmin over W in PC(D_n) of W(H) + alpha W(S); returns [W(H), W(S)] at the minimiser
+  argmin(s, sCash, alpha) {
+    COUNT.oracle++;
+    let h = this.st.Hcash, x = sCash;
+    for (const { vecs, hv, cols } of this.comps) {
+      let bv = Infinity, bh = 0, bx = 0;
+      for (let k = 0; k < vecs.length; k++) {
+        const v = vecs[k];
+        let xv = 0;
+        for (const [si, ci] of cols) if (v[ci]) xv += s[si];
+        const val = hv[k] + alpha * xv;
+        if (val < bv) { bv = val; bh = hv[k]; bx = xv; }
+      }
+      h += bh; x += bx;
+    }
+    return [h, x];
+  }
+  // sum over alive budget levels j of u_j * alpha_j(p): finitely many unsaturated levels
+  // plus a closed-form tail (Lemma 5)
+  factor(s, prices) {
+    const sch = this.sched;
+    let sCash = 0;
+    for (let i = 0; i < s.length; i++) sCash -= s[i] * prices[i];
+    const [h1, x1] = this.argmin(s, sCash, 1);
+    const L = -(h1 + x1);
+    const jsat = Math.max(this.jlo, sch.firstSaturated(L));
+    let tot = sch.tail(jsat);
+    for (let j = this.jlo; j < jsat; j++) tot += sch.levelWeight(j) * this.newton(sch.budget(j), s, sCash, h1, x1);
+    return tot;
+  }
+  // largest alpha in [0,1] with min_W [b + W(H) + alpha W(S)] >= 0  (Newton-Dinkelbach, Lemma 4)
+  newton(b, s, sCash, h, x) {
+    let alpha = 1;
+    for (let it = 0; it < 10000; it++) {
+      if (b + h + alpha * x >= -1e-12 * (1 + b)) return alpha;
+      alpha = (b + h) / -x;
+      [h, x] = this.argmin(s, sCash, alpha);
+    }
+    throw new Error("Newton did not terminate");
+  }
+}
+
+// TF_n(p) = sum_k w_k [sum_j u_j alpha_{k,j}(p)] S^k_n(p)
+class TradingFirm {
+  constructor(dts, sched) {
+    this.dts = dts; this.sched = sched; this.evals = 0;
+    const supp = [], index = new Map();
+    for (const dt of dts) for (const s of dt.strat.sents) if (!index.has(s)) { index.set(s, supp.length); supp.push(s); }
+    this.supp = supp;
+    this.maps = dts.map(dt => dt.strat.sents.map(s => index.get(s)));
+  }
+  eval(p) {
+    this.evals++;
+    const P = new Map(this.supp.map((s, i) => [s, p[i]]));
+    const out = new Array(this.supp.length).fill(0);
+    for (let k = 0; k < this.dts.length; k++) {
+      const dt = this.dts[k], mp = this.maps[k];
+      const s = dt.strat.eval(P);
+      if (s.every(x => x === 0)) continue;
+      const c = dt.w * dt.factor(s, mp.map(i => p[i]));
+      if (c === 0) continue;
+      for (let i = 0; i < mp.length; i++) out[mp[i]] += c * s[i];
+    }
+    return out;
+  }
+  // l_inf-Lipschitz bound for p -> gap(TF(p), p)  (needs the margin; fast schedule only)
+  lipschitzOfGap() {
+    const sch = this.sched, B = new Array(this.supp.length).fill(0), L = B.slice();
+    this.dts.forEach((dt, k) => {
+      const mass = sch.tail(dt.jlo);
+      let inv = 0;
+      for (let j = dt.jlo; j < dt.jlo + 200; j++) inv += sch.levelWeight(j) / sch.budget(j);
+      const la = 2 * dt.strat.valueLip * inv;
+      this.maps[k].forEach((i, q) => {
+        B[i] += dt.w * mass * dt.strat.bounds[q];
+        L[i] += dt.w * (la * dt.strat.bounds[q] + mass * dt.strat.lips[q]);
+      });
+    });
+    return B.reduce((acc, b, i) => acc + b + L[i], 0);
+  }
+}
+
+// ---------------------------------------------------------------- MarketMaker
+// Find p in [0,1]^d with gap(TF(p), p) <= eps.  Heuristics are verified by the exact O(d) gap;
+// the Lipschitz subdivision fallback is complete (Prop. 3).
+const proj = x => (x < 0 ? 0 : x > 1 ? 1 : x);
+const norm = v => Math.sqrt(v.reduce((acc, x) => acc + x * x, 0));
+
+function mmBisect1d(T, eps) {
+  if (T([1])[0] >= 0) return [1];
+  if (T([0])[0] <= 0) return [0];
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2, t = T([mid])[0];
+    if (gap([t], [mid]) <= eps) return [mid];
+    if (t > 0) lo = mid; else hi = mid;
+  }
+  return [(lo + hi) / 2];
+}
+
+function solveLinear(A, b) {
+  const n = b.length, M = A.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-300) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    for (let r = c + 1; r < n; r++) {
+      const f = M[r][c] / M[c][c];
+      if (f) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {
+    let acc = M[r][n];
+    for (let k = r + 1; k < n; k++) acc -= M[r][k] * x[k];
+    x[r] = acc / M[r][r];
+  }
+  return x;
+}
+
+// Levenberg-Marquardt on the natural-map residual r(p) = p - Proj(p + c T(p))
+function mmNewton(T, p, eps, maxIter = 60) {
+  const d = p.length;
+  let t = T(p);
+  const c = 1 / Math.max(1e-12, ...t.map(Math.abs));
+  const resid = (q, tq) => q.map((qi, i) => qi - proj(qi + c * tq[i]));
+  let r = resid(p, t), nr = r.reduce((a, x) => a + x * x, 0), g = gap(t, p);
+  let best = [g, p], lam = 1e-6;
+  for (let it = 0; it < maxIter; it++) {
+    if (g <= eps) return [p, g];
+    const J = Array.from({ length: d }, () => new Array(d).fill(0));
+    for (let j = 0; j < d; j++) {
+      const h = p[j] < 0.5 ? 1e-7 : -1e-7, q = p.slice();
+      q[j] += h;
+      const rq = resid(q, T(q));
+      for (let i = 0; i < d; i++) J[i][j] = (rq[i] - r[i]) / h;
+    }
+    const JTJ = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => {
+      let s = 0; for (let k = 0; k < d; k++) s += J[k][i] * J[k][j]; return s;
+    }));
+    const JTr = Array.from({ length: d }, (_, i) => { let s = 0; for (let k = 0; k < d; k++) s += J[k][i] * r[k]; return s; });
+    let improved = false;
+    for (let ls = 0; ls < 12; ls++) {
+      const A = JTJ.map((row, i) => row.map((v, j) => (i === j ? v + lam * (1 + JTJ[i][i]) : v)));
+      const step = solveLinear(A, JTr.map(x => -x));
+      if (!step) { lam *= 10; continue; }
+      const q = p.map((pi, i) => proj(pi + step[i])), tq = T(q), rq = resid(q, tq);
+      const nq = rq.reduce((a, x) => a + x * x, 0);
+      if (nq < nr) {
+        p = q; t = tq; r = rq; nr = nq; g = gap(t, p);
+        if (g < best[0]) best = [g, p];
+        lam = Math.max(1e-12, lam / 10); improved = true; break;
+      }
+      lam *= 10;
+    }
+    if (!improved) break;
+  }
+  return [best[1], best[0]];
+}
+
+// projected extragradient with Khobotov backtracking
+function mmExtragradient(T, p, eps, maxIter = 2000) {
+  let t = T(p), g = gap(t, p), best = [g, p], eta = 1;
+  for (let it = 0; it < maxIter; it++) {
+    if (g <= eps) return [p, g];
+    let y, ty;
+    for (;;) {
+      y = p.map((pi, i) => proj(pi + eta * t[i]));
+      ty = T(y);
+      const gy = gap(ty, y);
+      if (gy <= eps) return [y, gy];
+      const dy = norm(y.map((v, i) => v - p[i])), dt = norm(ty.map((v, i) => v - t[i]));
+      if (eta * dt <= 0.9 * dy + 1e-18 || eta < 1e-12) break;
+      eta *= 0.5;
+    }
+    p = p.map((pi, i) => proj(pi + eta * ty[i]));
+    t = T(p); g = gap(t, p);
+    if (g < best[0]) best = [g, p];
+    eta *= 1.5;
+  }
+  return [best[1], best[0]];
+}
+
+// nonlinear Gauss-Seidel: each 1-d complementarity problem by bisection
+function mmCoordinate(T, p, eps, sweeps = 60) {
+  p = p.slice();
+  let g = gap(T(p), p);
+  for (let sw = 0; sw < sweeps && g > eps; sw++) {
+    for (let i = 0; i < p.length; i++) {
+      const h = x => { const q = p.slice(); q[i] = x; return T(q)[i]; };
+      if (h(1) >= 0) p[i] = 1;
+      else if (h(0) <= 0) p[i] = 0;
+      else {
+        let lo = 0, hi = 1;
+        for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (h(mid) > 0) lo = mid; else hi = mid; }
+        p[i] = (lo + hi) / 2;
+      }
+    }
+    g = gap(T(p), p);
+  }
+  return [p, g];
+}
+
+// complete fallback: best-first box subdivision; a box whose centre has gap > lip*radius holds no zero
+function mmSubdivide(T, d, eps, lip, maxCells = 200000) {
+  const heap = [];
+  const push = e => { heap.push(e); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+  const pop = () => {
+    const top = heap[0], last = heap.pop();
+    if (heap.length) {
+      heap[0] = last; let i = 0;
+      for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; }
+    }
+    return top;
+  };
+  const centre = (lo, hi) => lo.map((a, i) => (a + hi[i]) / 2);
+  let lo = new Array(d).fill(0), hi = new Array(d).fill(1), c = centre(lo, hi);
+  push([gap(T(c), c), lo, hi, c]);
+  for (let cells = 0; heap.length && cells < maxCells; cells++) {
+    const [g, blo, bhi, bc] = pop();
+    if (g <= eps) return [bc, g];
+    let w = 0;
+    for (let k = 1; k < d; k++) if (bhi[k] - blo[k] > bhi[w] - blo[w]) w = k;
+    const mid = (blo[w] + bhi[w]) / 2;
+    for (const [a, b] of [[blo[w], mid], [mid, bhi[w]]]) {
+      const nlo = blo.slice(), nhi = bhi.slice();
+      nlo[w] = a; nhi[w] = b;
+      const nc = centre(nlo, nhi), ng = gap(T(nc), nc);
+      const r = Math.max(...nlo.map((x, i) => (nhi[i] - x) / 2));
+      if (ng <= lip * r + 1e-15) push([ng, nlo, nhi, nc]);
+    }
+  }
+  throw new Error("subdivision gave up (cell cap)");
+}
+
+function marketMaker(TF, eps, warm, lipFn) {
+  const d = TF.supp.length, e0 = TF.evals, T = p => TF.eval(p);
+  if (d === 0) return { p: [], gap: 0, method: "empty", evals: 0 };
+  if (d === 1) { const p = mmBisect1d(T, eps); return { p, gap: gap(T(p), p), method: "bisection", evals: TF.evals - e0 }; }
+  let p = TF.supp.map(s => warm.get(s) ?? 0.5);
+  let g = gap(T(p), p);
+  if (g <= eps) return { p, gap: g, method: "warm start", evals: TF.evals - e0 };
+  for (const [name, solver] of [["Newton", mmNewton], ["extragradient", mmExtragradient], ["Gauss–Seidel", mmCoordinate]]) {
+    [p, g] = solver(T, p, eps);
+    if (g <= eps && gap(T(p), p) <= eps) return { p, gap: g, method: name, evals: TF.evals - e0 };
+  }
+  if (!lipFn || d > 8) throw new Error("heuristics failed and no guaranteed fallback for d = " + d);
+  [p, g] = mmSubdivide(T, d, eps, lipFn());
+  return { p, gap: g, method: "subdivision", evals: TF.evals - e0 };
+}
+
+// ---------------------------------------------------------------- the outer recursion
+// P_n := MarketMaker_n(TradingFirm_n(P_<n), P_<n)
+class Market {
+  constructor(traders, dp, { schedule = FastSchedule, tol = n => 1e-3 / (n * n) } = {}) {
+    this.dp = dp; this.sched = schedule; this.tol = tol;
+    this.states = traders.map((trader, i) => ({ k: i + 1, trader, start: i + 1, H: new Map(), Hcash: 0, M: 0 }));
+    this.history = []; this.day = 0; this.firmValue = 0; this.sumEps = 0;
+  }
+  step() {
+    const n = this.day + 1, t0 = performance.now();
+    COUNT.oracle = 0;
+    const ws = this.dp.advance(n, this.history);
+    const active = this.states.filter(st => st.start <= n);
+    const strats = active.map(st => new Strategy(st.trader.strategy(n, this.history, this.dp), n, this.history));
+    const TF = new TradingFirm(active.map((st, i) => new DayTrader(st, strats[i], ws, this.sched)), this.sched);
+    const eps = this.tol(n);
+    const res = marketMaker(TF, eps, this.history.at(-1) ?? new Map(), this.sched === FastSchedule ? () => TF.lipschitzOfGap() : null);
+    const P = new Map(TF.supp.map((s, i) => [s, res.p[i]]));
+    this.history.push(P);
+    const g = gap(TF.eval(res.p), res.p);
+    this.firmValue += g; this.sumEps += eps;
+    // raw holdings, worst plausible loss M, settlement of decided sentences
+    active.forEach((st, i) => {
+      const sg = strats[i], s = sg.eval(P);
+      sg.sents.forEach((x, q) => {
+        if (s[q] !== 0) { st.H.set(x, (st.H.get(x) ?? 0) + s[q]); st.Hcash -= s[q] * (P.get(x) ?? 0); }
+      });
+      if (st.H.size) {
+        st.M = Math.max(st.M, -ws.minLinear(st.Hcash, st.H));
+        for (const { sents, vecs } of ws.components([...st.H.keys()]))
+          sents.forEach((x, q) => {
+            if (vecs.every(v => v[q] === vecs[0][q])) { st.Hcash += st.H.get(x) * vecs[0][q]; st.H.delete(x); }
+          });
+      }
+    });
+    this.day = n;
+    return { n, d: TF.supp.length, method: res.method, evals: res.evals, gap: g, eps, oracle: COUNT.oracle, ms: performance.now() - t0 };
+  }
+}
+
+// ---------------------------------------------------------------- traders (paper's feature language)
+const P = Price;
+const trader = (name, strategy) => ({ name, strategy });
+const complementArb = phi => trader("complement " + phi.key, (n) => {
+  const x = sub(sub(1, P(phi, n)), P(neg(phi), n));
+  return new Map([[phi, x], [neg(phi), x]]);
+});
+const conjArb = (a, b) => trader("∧/∨ arbitrage", (n) => {
+  const x = sub(sub(add(P(a, n), P(b, n)), P(conj(a, b), n)), P(disj(a, b), n));
+  return new Map([[conj(a, b), x], [disj(a, b), x], [a, mul(-1, x)], [b, mul(-1, x)]]);
+});
+const provenBuyer = watch => trader("buys proven sentences", (n, h, dp) => {
+  const m = new Map();
+  for (const s of watch) {
+    if (dp.D.has(s)) m.set(s, sub(1, P(s, n)));
+    else if (dp.D.has(neg(s))) m.set(s, mul(-1, P(s, n)));
+  }
+  return m;
+});
+// buys or sells whatever D_n already decides propositionally (a small consistency check)
+const decidedBuyer = watch => trader("buys decided combinations", (n, h, dp) => {
+  const m = new Map();
+  for (const s of watch) {
+    const v = dp.ws.components([s])[0].vecs;
+    if (v.every(x => x[0] === v[0][0])) m.set(s, v[0][0] ? sub(1, P(s, n)) : mul(-1, P(s, n)));
+  }
+  return m;
+});
+const informed = (f, truth) => trader("informed", n => new Map([[f(n), sub(truth(n) ? 1 : 0, P(f(n), n))]]));
+const stubborn = (f, q) => trader("stubborn", n => new Map([[f(n), sub(q, P(f(n), n))]]));
+const paradox = chi => trader("paradox bettor", n => new Map([[chi(n), clip(mul(sub(0.5, P(chi(n), n)), 10), -1, 1)]]));
+const rotator = (a, b) => trader("rotator", n => new Map([[a, mul(sub(P(b, n), 0.5), -1)], [b, sub(P(a, n), 0.5)]]));
+const expander = (a, b) => trader("expander", n => {
+  const x = sub(P(a, n), 0.5), y = sub(P(b, n), 0.5);
+  return new Map([[a, sub(x, y)], [b, add(x, y)]]);
+});
+const meanRevert = phi => trader("mean reversion", n => (n === 1 ? new Map() : new Map([[phi, mul(sub(P(phi, n - 1), P(phi, n)), 0.5)]])));
+const idle = () => trader("idle", () => new Map());
+
+// ---------------------------------------------------------------- scenarios
+const fresh = i => atom(1000 + i);   // a new sentence every day
+const chi = i => atom(5000 + i);     // chi_i is revealed true iff P_i(chi_i) < 1/2
+
+function miniMath(A = 8, delay = 4) {
+  const truth = i => i % 3 !== 1;
+  const lit = i => (truth(i) ? atom(i) : neg(atom(i)));
+  const dp = new DeductiveProcess((n, history) => {
+    const out = [];
+    if (n % 2 === 0 && n / 2 < A - 1) { const i = n / 2; if (truth(i) || truth(i + 1)) out.push(disj(atom(i), atom(i + 1))); }
+    if (n % 5 === 0 && n / 5 - 1 < A) out.push(lit(n / 5 - 1));
+    const m = n - delay;
+    if (m >= 1) out.push(m % 3 !== 0 ? fresh(m) : neg(fresh(m)));
+    if (n >= 2) { const c = chi(n - 1); out.push((history[n - 2].get(c) ?? 0) < 0.5 ? c : neg(c)); }
+    return out;
+  });
+  const a = Array.from({ length: A }, (_, i) => atom(i));
+  const traders = [
+    complementArb(a[0]), complementArb(a[1]), complementArb(a[2]),
+    conjArb(a[0], a[1]), conjArb(a[2], a[3]),
+    provenBuyer([...a, ...a.slice(0, A - 1).map((x, i) => disj(x, a[i + 1]))]),
+    stubborn(fresh, 0.5), informed(fresh, n => n % 3 !== 0),
+    paradox(chi), rotator(a[4], a[5]), expander(a[6], a[7]), meanRevert(a[3]),
+    decidedBuyer([neg(a[0]), conj(a[0], a[1]), disj(a[0], a[1]), conj(a[2], a[3]), disj(a[2], a[3])]),
+  ];
+  return { traders, dp, truth };
+}
+
+function duel(k, delay = 3) {
+  const dp = new DeductiveProcess(n => (n - delay >= 1 ? [fresh(n - delay)] : []));
+  const traders = [stubborn(fresh, 0.5), ...Array.from({ length: k - 2 }, idle), informed(fresh, () => true)];
+  return { traders, dp };
+}
+
+if (typeof module !== "undefined") module.exports = { atom, neg, conj, disj, gap, maxOverAllWorlds, Market, miniMath, duel, fresh, chi, FastSchedule, PaperSchedule };
+</script>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmtInt = x => Math.round(x).toLocaleString("en-US");
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ------------------------------------------------------------ theme colours for canvas
+  let C = {};
+  function hex(h) {
+    h = h.trim();
+    if (h.startsWith("#")) {
+      if (h.length === 4) h = "#" + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+      return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    }
+    const m = h.match(/\d+(\.\d+)?/g);
+    return m ? m.slice(0, 3).map(Number) : [128, 128, 128];
+  }
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement), t = n => cs.getPropertyValue(n).trim();
+    C = {
+      f: hex(t("--false")), m: hex(t("--mid")), t: hex(t("--true")),
+      ink: t("--ink"), ink2: t("--ink-2"), ink3: t("--ink-3"), rule: t("--rule"), rule2: t("--rule-2"),
+      sheet: t("--sheet"), accent: t("--accent"), fast: t("--s-fast"), paper: t("--s-paper"),
+      display: t("--f-display"), mono: t("--f-mono"),
+    };
+  }
+  const mix = (a, b, u) => a.map((x, i) => Math.round(x + (b[i] - x) * u));
+  function priceColor(x) {
+    const c = x < 0.5 ? mix(C.f, C.m, x / 0.5) : mix(C.m, C.t, (x - 0.5) / 0.5);
+    return "rgb(" + c.join(",") + ")";
+  }
+  function setupCanvas(cv, cssH) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth;
+    cv.style.height = cssH + "px";
+    cv.width = Math.round(w * dpr); cv.height = Math.round(cssH * dpr);
+    const ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h: cssH };
+  }
+
+  // ------------------------------------------------------------ the ledger
+  const ROWS = [
+    { group: "Atoms (truth revealed one by one)" },
+    ...Array.from({ length: 8 }, (_, i) => ({ label: "a" + i, s: atom(i) })),
+    { group: "Combinations" },
+    { label: "¬a0", s: neg(atom(0)) },
+    { label: "a0 ∧ a1", s: conj(atom(0), atom(1)) },
+    { label: "a0 ∨ a1", s: disj(atom(0), atom(1)) },
+    { group: "A new sentence each day" },
+    { label: "fₙ", per: n => fresh(n), note: n => (n % 3 !== 0 ? "true" : "false") + " (n mod 3 ≠ 0), decided 4 days later" },
+    { label: "χₙ", per: n => chi(n), note: (n, p) => (p < 0.5 ? "true" : "false") + ": price below ½ makes it true" },
+  ];
+  const ROW_H = 19, GROUP_H = 20, AXIS_H = 22;
+  let market, recs, running = !reduced, speed = 25, layout = null, hover = null;
+  const MAX_DAYS = 3000;
+
+  function newMarket() {
+    const sc = miniMath();
+    market = new Market(sc.traders, sc.dp);
+    recs = [];
+  }
+  function stepOnce() {
+    if (market.day >= MAX_DAYS) { running = false; syncRun(); return; }
+    recs.push(market.step());
+  }
+  function rowTops() {
+    let y = 0;
+    return ROWS.map(r => { const top = y; y += r.group ? GROUP_H : ROW_H; return top; }).concat([y]);
+  }
+  function decided(s) {
+    const comps = market.dp.ws.components([s]);
+    const v = comps[0].vecs;
+    return v.every(x => x[0] === v[0][0]) ? (v[0][0] ? "true" : "false") : "";
+  }
+  function drawLedger() {
+    const cv = $("ledger"), tops = rowTops();
+    const H = tops[tops.length - 1] + AXIS_H;
+    const { ctx, w } = setupCanvas(cv, H);
+    const narrow = w < 560;
+    const labelW = narrow ? 64 : 104, truthW = narrow ? 40 : 54, cellW = narrow ? 5 : 7;
+    const area = w - labelW - truthW - 8;
+    const cols = Math.max(10, Math.floor(area / cellW));
+    const last = market.day, first = Math.max(1, last - cols + 1);
+    layout = { labelW, truthW, cellW, cols, first, last, tops, w };
+    ctx.clearRect(0, 0, w, H);
+    ctx.textBaseline = "middle";
+    ROWS.forEach((r, ri) => {
+      const y = tops[ri];
+      if (r.group) {
+        ctx.fillStyle = C.ink3;
+        ctx.font = "600 10.5px " + C.display;
+        ctx.fillText(r.group.toUpperCase(), 0, y + GROUP_H / 2 + 2);
+        return;
+      }
+      ctx.fillStyle = C.ink;
+      ctx.font = "13px " + C.mono;
+      ctx.fillText(r.label, 0, y + ROW_H / 2);
+      for (let day = first; day <= last; day++) {
+        const P = market.history[day - 1], s = r.s || r.per(day), x = labelW + (day - first) * cellW;
+        const v = P.get(s);
+        if (v === undefined) { ctx.fillStyle = C.rule2; ctx.fillRect(x, y + ROW_H / 2 - 1, cellW - 1, 2); continue; }
+        ctx.fillStyle = priceColor(v);
+        ctx.fillRect(x, y + 1, cellW - 1, ROW_H - 2);
+      }
+      if (r.s) {
+        const d = decided(r.s);
+        ctx.fillStyle = C.ink2;
+        ctx.font = "12px " + C.mono;
+        ctx.fillText(d || "·", w - truthW + 6, y + ROW_H / 2);
+      }
+    });
+    // axis
+    const yA = tops[tops.length - 1] + 4;
+    ctx.fillStyle = C.ink3;
+    ctx.font = "11px " + C.display;
+    ctx.textBaseline = "top";
+    const every = [10, 20, 50, 100, 200, 500].find(e => (e * cellW) >= 56) || 1000;
+    for (let day = Math.ceil(first / every) * every; day <= last; day += every) {
+      const x = labelW + (day - first) * cellW;
+      ctx.fillRect(x, yA - 4, 1, 4);
+      ctx.fillText(String(day), x - 6, yA + 1);
+    }
+    ctx.fillText("D says", w - truthW + 6, yA + 1);
+  }
+  function ledgerTip(ev) {
+    if (!layout) return;
+    const cv = $("ledger"), rect = cv.getBoundingClientRect();
+    const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
+    const { labelW, cellW, first, last, tops } = layout;
+    const ri = tops.findIndex((t, i) => i < ROWS.length && y >= t && y < tops[i + 1]);
+    const day = first + Math.floor((x - labelW) / cellW);
+    const tip = $("ledger-tip");
+    if (ri < 0 || ROWS[ri].group || x < labelW || day < first || day > last) { tip.hidden = true; return; }
+    const r = ROWS[ri], s = r.s || r.per(day), v = market.history[day - 1].get(s);
+    tip.innerHTML = "<div>" + r.label.replace("ₙ", "<sub>" + day + "</sub>") + ", day " + day + "</div>" +
+      "<div>price <b>" + (v === undefined ? "not traded" : v.toFixed(3)) + "</b></div>" +
+      (r.note && v !== undefined ? "<div class='muted'>" + r.note(day, v) + "</div>" : "");
+    tip.hidden = false;
+    const wrap = $("ledger-wrap").getBoundingClientRect();
+    let left = ev.clientX - wrap.left + 12, top = ev.clientY - wrap.top + 12;
+    if (left + tip.offsetWidth > wrap.width) left = ev.clientX - wrap.left - tip.offsetWidth - 12;
+    tip.style.left = Math.max(0, left) + "px"; tip.style.top = top + "px";
+  }
+  function renderStats() {
+    const r = recs[recs.length - 1];
+    $("st-day").textContent = fmtInt(market.day);
+    if (!r) return;
+    $("st-d").textContent = r.d;
+    $("st-method").textContent = r.method;
+    $("st-firm").textContent = market.firmValue.toExponential(2);
+    $("st-firm-ok").textContent = (market.firmValue <= market.sumEps ? "≤ Σε = " : "> Σε = ") + market.sumEps.toExponential(2);
+    const tail = recs.slice(-50), ms = tail.reduce((a, x) => a + x.ms, 0) / tail.length;
+    $("st-ms").textContent = ms.toFixed(1) + " ms";
+    const rows = recs.slice(-6).reverse().map(x =>
+      "<tr><td>" + x.n + "</td><td class='num'>" + x.d + "</td><td>" + x.method + "</td><td class='num'>" + x.evals +
+      "</td><td class='num'>" + x.oracle + "</td><td class='num'>" + x.gap.toExponential(1) + "</td><td class='num'>" +
+      x.eps.toExponential(1) + "</td><td class='num'>" + x.ms.toFixed(1) + "</td></tr>");
+    $("log").innerHTML = rows.join("");
+  }
+  function syncRun() { $("run").textContent = running ? "Pause" : (market.day >= MAX_DAYS ? "Finished (" + MAX_DAYS + " days)" : "Run"); $("run").disabled = market.day >= MAX_DAYS; }
+
+  let lastT = 0, carry = 0;
+  function frame(t) {
+    if (running) {
+      const dt = lastT ? Math.min(100, t - lastT) : 16;
+      if (speed === "max") {
+        const t0 = performance.now();
+        while (performance.now() - t0 < 14 && running) stepOnce();
+      } else {
+        carry += (speed * dt) / 1000;
+        while (carry >= 1 && running) { stepOnce(); carry -= 1; }
+      }
+      drawLedger(); renderStats();
+    }
+    lastT = t;
+    requestAnimationFrame(frame);
+  }
+
+  // ------------------------------------------------------------ Lemma 1 widget
+  function lemma() {
+    const d = +$("lem-d").value;
+    const t = Array.from({ length: d }, () => Math.random() * 2 - 1), p = Array.from({ length: d }, () => Math.random());
+    let t0 = performance.now(), a, reps = 0;
+    do { a = gap(t, p); reps++; } while (performance.now() - t0 < 5);
+    const fastMs = (performance.now() - t0) / reps;
+    t0 = performance.now();
+    const b = maxOverAllWorlds(t, p);
+    const slowMs = performance.now() - t0;
+    $("lem-fast").textContent = a.toFixed(12) + "  ·  " + (fastMs * 1000).toFixed(2) + " µs";
+    $("lem-slow").textContent = b.toFixed(12) + "  ·  " + (slowMs < 1 ? (slowMs * 1000).toFixed(0) + " µs" : slowMs.toFixed(1) + " ms") + " over " + fmtInt(2 ** d) + " worlds";
+    $("lem-ratio").textContent = (Math.abs(a - b) < 1e-9 ? "equal; " : "MISMATCH; ") + fmtInt(slowMs / fastMs) + "× faster";
+  }
+
+  // ------------------------------------------------------------ late-trader contest
+  const DUEL = {
+    paper: { 2: 21, 3: 47, 4: 88, 6: 298, 8: 1084, 10: 4174, 12: 16480, 14: 65650, 16: 262277 },
+    fast: { 2: 54, 3: 121, 4: 195, 6: 435, 8: 724, 10: 1157, 12: 1606, 14: 2137, 16: 2749, 20: 4341, 24: 6131, 32: 10938 },
+  };
+  function duelTable() {
+    const ks = [...new Set([...Object.keys(DUEL.paper), ...Object.keys(DUEL.fast)].map(Number))].sort((a, b) => a - b);
+    $("duel-table").innerHTML = ks.map(k => "<tr><td>" + k + "</td><td class='num'>" + (DUEL.paper[k] ? fmtInt(DUEL.paper[k]) : "not run") +
+      "</td><td class='num'>" + fmtInt(DUEL.fast[k]) + "</td></tr>").join("");
+  }
+  function duelChart() {
+    const svg = $("duel-chart"), W = 960, H = 340, m = { l: 60, r: 96, t: 14, b: 42 };
+    const x = k => m.l + ((k - 2) / 30) * (W - m.l - m.r);
+    const y = v => m.t + (1 - (Math.log10(v) - 1) / 5) * (H - m.t - m.b);
+    let s = "";
+    for (let e = 1; e <= 6; e++) {
+      const yy = y(10 ** e);
+      s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/>`;
+      s += `<text class="tick" x="${m.l - 8}" y="${yy + 4}" text-anchor="end">${["10", "100", "1k", "10k", "100k", "1M"][e - 1]}</text>`;
+    }
+    for (const k of [2, 4, 8, 12, 16, 20, 24, 28, 32]) s += `<text class="tick" x="${x(k)}" y="${H - m.b + 18}" text-anchor="middle">${k}</text>`;
+    s += `<line class="ax" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/>`;
+    s += `<text class="axlabel" x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle">position k of the right trader</text>`;
+    s += `<text class="axlabel" x="14" y="${(m.t + H - m.b) / 2}" transform="rotate(-90 14 ${(m.t + H - m.b) / 2})" text-anchor="middle">days</text>`;
+    for (const [key, cls, name] of [["paper", "paper", "Paper's weights"], ["fast", "fast", "LIA-fast"]]) {
+      const pts = Object.entries(DUEL[key]).map(([k, v]) => [Number(k), v]).sort((a, b) => a[0] - b[0]);
+      s += `<polyline class="ln-${cls}" points="${pts.map(([k, v]) => x(k) + "," + y(v)).join(" ")}"/>`;
+      for (const [k, v] of pts) {
+        s += `<circle class="pt-${cls}" cx="${x(k)}" cy="${y(v)}" r="4.5"/>`;
+        s += `<circle class="hit" cx="${x(k)}" cy="${y(v)}" r="12" data-k="${k}" data-v="${v}" data-n="${name}"/>`;
+      }
+      const [lk, lv] = pts[pts.length - 1];
+      s += `<text class="lbl" x="${x(lk) + 10}" y="${y(lv) + 4}">${key === "paper" ? "paper" : "LIA-fast"}</text>`;
+    }
+    svg.innerHTML = s;
+    const tip = $("duel-tip"), wrap = $("duel-chart-wrap");
+    svg.querySelectorAll(".hit").forEach(c => {
+      c.addEventListener("pointerenter", () => {
+        tip.innerHTML = `<div>${c.dataset.n}, k = ${c.dataset.k}</div><div><b>${fmtInt(+c.dataset.v)}</b> days</div>`;
+        tip.hidden = false;
+        const r = c.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+        let left = r.left - wr.left + 16;
+        if (left + tip.offsetWidth > wr.width) left = r.left - wr.left - tip.offsetWidth - 4;
+        tip.style.left = left + "px"; tip.style.top = (r.top - wr.top - 8) + "px";
+      });
+      c.addEventListener("pointerleave", () => { tip.hidden = true; });
+    });
+  }
+
+  let duelRun = null, duelWeights = "fast";
+  function drawTrace() {
+    const cv = $("trace"), { ctx, w, h } = setupCanvas(cv, 170);
+    const m = { l: 34, r: 8, t: 8, b: 22 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = "11px " + C.display; ctx.textBaseline = "middle"; ctx.fillStyle = C.ink3;
+    for (const v of [0, 0.5, 0.75, 1]) {
+      const yy = m.t + (1 - v) * ph;
+      ctx.fillStyle = v === 0.75 ? C.ink3 : C.rule2;
+      if (v === 0.75) { ctx.setLineDash([4, 4]); ctx.strokeStyle = C.ink3; ctx.beginPath(); ctx.moveTo(m.l, yy); ctx.lineTo(m.l + pw, yy); ctx.stroke(); ctx.setLineDash([]); }
+      else ctx.fillRect(m.l, yy, pw, 1);
+      ctx.fillStyle = C.ink3; ctx.fillText(String(v), 4, yy);
+    }
+    if (!duelRun || !duelRun.prices.length) return;
+    const N = duelRun.prices.length, total = Math.max(N, duelRun.expect || N);
+    ctx.strokeStyle = duelRun.weights === "fast" ? C.fast : C.paper; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const cols = Math.min(Math.floor(pw), N);
+    for (let c = 0; c < cols; c++) {
+      const a = Math.floor((c * N) / cols), b = Math.max(a + 1, Math.floor(((c + 1) * N) / cols));
+      let lo = 1, hi = 0;
+      for (let i = a; i < b; i++) { const v = duelRun.prices[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      const xx = m.l + ((b / total) * pw);
+      ctx.moveTo(xx, m.t + (1 - hi) * ph); ctx.lineTo(xx, m.t + (1 - lo) * ph + 0.5);
+    }
+    ctx.stroke();
+    ctx.fillStyle = C.ink3; ctx.textBaseline = "top";
+    ctx.fillText("day " + fmtInt(total), m.l + pw - 70, h - m.b + 6);
+    ctx.fillText("1", m.l, h - m.b + 6);
+    if (duelRun.first) {
+      const xx = m.l + (duelRun.first / total) * pw;
+      ctx.fillStyle = C.ink; ctx.fillRect(xx, m.t, 1.5, ph);
+      ctx.textBaseline = "top"; ctx.fillText("day " + fmtInt(duelRun.first), Math.min(xx + 4, m.l + pw - 70), m.t + 2);
+    }
+  }
+  function startDuel() {
+    const k = +$("duel-k").value;
+    const sc = duel(k);
+    const sched = duelWeights === "fast" ? FastSchedule : PaperSchedule;
+    duelRun = { k, weights: duelWeights, m: new Market(sc.traders, sc.dp, { schedule: sched }), prices: [], streak: 0, first: null, done: false,
+      expect: (duelWeights === "fast" ? DUEL.fast : DUEL.paper)[k] };
+    $("duel-go").disabled = true; $("duel-stop").disabled = false;
+    if (duelWeights === "paper" && k >= 14) $("duel-status").textContent = "This one needs about " + fmtInt(duelRun.expect) + " days; it takes a while.";
+    requestAnimationFrame(duelFrame);
+  }
+  function duelFrame() {
+    const R = duelRun;
+    if (!R || R.done) return;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 24) {
+      const n = R.m.day + 1;
+      R.m.step();
+      const p = R.m.history[n - 1].get(fresh(n)) ?? 0;
+      R.m.history[n - 1] = null;             // keep memory flat on long runs (this trader only looks at today)
+      R.prices.push(p);
+      if (p >= 0.75) { R.streak++; if (R.first === null) R.first = n; if (R.streak >= 20) { R.done = true; break; } }
+      else { R.streak = 0; R.first = null; }
+    }
+    const n = R.m.day;
+    $("duel-status").textContent = R.done
+      ? "Locked in on day " + fmtInt(R.first) + " (" + (R.weights === "fast" ? "LIA-fast" : "paper's") + " weights, k = " + R.k + "). Python reference: " + (R.expect ? fmtInt(R.expect) : "not run") + " days."
+      : "Day " + fmtInt(n) + " · today's price " + R.prices[n - 1].toFixed(3) + (R.expect ? " · Python reference: " + fmtInt(R.expect) + " days" : "");
+    drawTrace();
+    if (R.done) { $("duel-go").disabled = false; $("duel-stop").disabled = true; }
+    else requestAnimationFrame(duelFrame);
+  }
+
+  // ------------------------------------------------------------ code listing
+  function showSource() {
+    const src = $("engine").textContent.replace(/^\s*\n/, "").replace(/\s+$/, "");
+    const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    $("src").innerHTML = src.split("\n").map(line => {
+      const i = line.indexOf("//");
+      if (i >= 0 && !/["'`][^"'`]*\/\//.test(line.slice(0, i + 2))) return esc(line.slice(0, i)) + "<span class='c'>" + esc(line.slice(i)) + "</span>";
+      return esc(line);
+    }).join("\n");
+    $("copy").addEventListener("click", () => {
+      const done = () => { $("copy").textContent = "Copied"; setTimeout(() => ($("copy").textContent = "Copy code"), 1500); };
+      const fallback = () => { const r = document.createRange(); r.selectNodeContents($("src")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy").textContent = "Selected; press Ctrl+C"; };
+      try { navigator.clipboard.writeText(src).then(done, fallback); } catch (e) { fallback(); }
+    });
+  }
+
+  // ------------------------------------------------------------ wiring
+  function redrawAll() { readColors(); drawLedger(); drawTrace(); }
+  function init() {
+    readColors();
+    newMarket();
+    for (let i = 0; i < 90; i++) stepOnce();      // open on a filled-in ledger
+    drawLedger(); renderStats(); syncRun();
+    $("run").addEventListener("click", () => { running = !running; syncRun(); });
+    $("step").addEventListener("click", () => { running = false; stepOnce(); drawLedger(); renderStats(); syncRun(); });
+    $("restart").addEventListener("click", () => { newMarket(); for (let i = 0; i < 5; i++) stepOnce(); drawLedger(); renderStats(); running = !reduced; syncRun(); });
+    document.querySelectorAll("[data-speed]").forEach(b => b.addEventListener("click", () => {
+      speed = b.dataset.speed === "max" ? "max" : +b.dataset.speed;
+      document.querySelectorAll("[data-speed]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+    }));
+    $("ledger").addEventListener("pointermove", ledgerTip);
+    $("ledger").addEventListener("pointerleave", () => { $("ledger-tip").hidden = true; });
+    $("lem-d").addEventListener("input", () => { $("lem-d-out").textContent = $("lem-d").value; });
+    $("lem-go").addEventListener("click", lemma);
+    lemma();
+    duelTable(); duelChart(); drawTrace();
+    document.querySelectorAll("[data-w]").forEach(b => b.addEventListener("click", () => {
+      duelWeights = b.dataset.w;
+      document.querySelectorAll("[data-w]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+    }));
+    $("duel-go").addEventListener("click", startDuel);
+    $("duel-stop").addEventListener("click", () => { if (duelRun) duelRun.done = true; $("duel-go").disabled = false; $("duel-stop").disabled = true; $("duel-status").textContent = "Stopped on day " + fmtInt(duelRun.m.day) + "."; });
+    showSource();
+    window.addEventListener("resize", () => { drawLedger(); drawTrace(); });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll);
+    new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawAll);
+    requestAnimationFrame(frame);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+</script>

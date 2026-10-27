@@ -1,0 +1,1365 @@
+<title>The Arithmetic Exchange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: an exchange floor. Header and control strip, then today's quote board beside the
+   settlement tape, then who the market listens to, calibration, and the trader roster. */
+:root {
+  --paper: #f1f2f4;
+  --sheet: #ffffff;
+  --ink: #12151c;
+  --ink-2: #4a5161;
+  --ink-3: #6e7686;
+  --rule: #d6dae1;
+  --rule-2: #e7eaee;
+  --fill: #e9ecf0;
+  --bar: #12151c;
+  --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1014; --sheet: #161920; --ink: #e9ebf0; --ink-2: #acb3c1; --ink-3: #838b9b;
+    --rule: #2a2f3a; --rule-2: #20242d; --fill: #232833; --bar: #e9ebf0;
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1014; --sheet: #161920; --ink: #e9ebf0; --ink-2: #acb3c1; --ink-3: #838b9b;
+  --rule: #2a2f3a; --rule-2: #20242d; --fill: #232833; --bar: #e9ebf0;
+  --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 0 3rem;
+}
+.wrap { max-width: 78rem; margin-inline: auto; }
+header { padding-block: 2.4rem 1rem; display: grid; gap: 0.6rem; }
+.eyebrow { font-size: 0.74rem; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+h1 {
+  font-family: var(--f-display); font-stretch: 125%; font-weight: 800; letter-spacing: -0.01em;
+  font-size: clamp(2.1rem, 5.4vw, 3.8rem); line-height: 0.98; margin: 0; text-wrap: balance;
+}
+.lede { max-width: 44rem; font-size: 1.08rem; color: var(--ink-2); margin: 0.2rem 0 0; }
+h2 { font-family: var(--f-display); font-stretch: 112%; font-weight: 720; font-size: 1.12rem; letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+h3 { font-size: 0.95rem; font-weight: 650; margin: 0; }
+p { margin: 0.5rem 0; }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.84rem; }
+a { color: var(--ink); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+
+.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding-inline: 16px; padding-block: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin-bottom: 10px; }
+
+/* control strip */
+.strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); padding-block: 10px; margin-bottom: 16px;
+}
+.daybox { display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+.daybox .label { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.daybox b { font-family: var(--f-mono); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+button, input[type="number"] {
+  font-family: var(--f-body); font-size: 0.86rem; font-weight: 600; color: var(--ink);
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 11px; line-height: 1.25;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--ink-3); }
+button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button:disabled { opacity: 0.5; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--rule); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--fill); }
+.seg-label { font-size: 0.72rem; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-right: 4px; }
+.ctl { display: inline-flex; align-items: center; gap: 6px; }
+
+.floor { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 920px) { .floor { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 16px; min-width: 0; }
+
+/* quote board */
+.board { width: 100%; border-collapse: collapse; }
+.board td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--rule-2); vertical-align: middle; }
+.board tr:last-child td { border-bottom: 0; }
+.board .fam { width: 5.4rem; }
+.chip { display: inline-block; font-size: 0.68rem; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); border: 1px solid var(--rule); border-radius: 3px; padding: 1px 6px; white-space: nowrap; }
+.chip.asked { border-color: var(--ink); color: var(--ink); }
+.stmt { font-weight: 560; min-width: 9rem; }
+.quote { width: 40%; min-width: 9rem; }
+.track { position: relative; height: 22px; background: var(--fill); border-radius: 2px; }
+.track .fillbar { position: absolute; left: 0; top: 7px; height: 8px; background: var(--bar); border-radius: 0 4px 4px 0; }
+.track .tk { position: absolute; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px 1px 0 0; }
+.price { width: 3.6rem; text-align: right; font-family: var(--f-mono); font-weight: 600; font-size: 1rem; }
+.due { width: 4.6rem; text-align: right; color: var(--ink-3); font-size: 0.78rem; white-space: nowrap; }
+.board tr { cursor: default; }
+.board tr:hover td { background: var(--paper); }
+
+/* settlement tape */
+.tape { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-height: 23rem; overflow-y: auto; }
+.tape li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 0; border-bottom: 1px solid var(--rule-2); }
+.tape .s { font-weight: 560; overflow-wrap: anywhere; }
+.tape .r { font-family: var(--f-mono); font-size: 0.82rem; text-align: right; white-space: nowrap; }
+.tape .d { grid-column: 1 / -1; font-size: 0.78rem; color: var(--ink-3); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--ink); margin-right: 6px; vertical-align: 0; }
+.dot.yes { background: var(--ink); }
+
+/* ask */
+.ask form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ask input { width: 11rem; font-family: var(--f-mono); }
+.ask .out { margin-top: 10px; display: grid; gap: 4px; }
+.ask .big { font-family: var(--f-mono); font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.ask ul { list-style: none; padding: 0; margin: 4px 0 0; font-size: 0.84rem; display: grid; gap: 2px; }
+.ask li { display: flex; justify-content: space-between; gap: 10px; }
+.err { color: var(--ink); font-weight: 600; }
+
+/* charts */
+.charts { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+@media (max-width: 920px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.canvas-wrap { position: relative; }
+canvas { display: block; width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--ink-2); margin-top: 8px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tip {
+  position: absolute; z-index: 5; pointer-events: none; min-width: 10rem; max-width: 18rem;
+  background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14); padding: 7px 9px; font-size: 0.8rem; line-height: 1.4;
+}
+.tip .row { display: flex; justify-content: space-between; gap: 12px; }
+svg text { font-family: var(--f-body); }
+.ax { stroke: var(--rule); stroke-width: 1; }
+.gl { stroke: var(--rule-2); stroke-width: 1; }
+.tick { fill: var(--ink-3); font-size: 11px; }
+.axl { fill: var(--ink-2); font-size: 11.5px; }
+.diag { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+.cal { fill: var(--ink); stroke: var(--sheet); stroke-width: 2; }
+.cal-line { stroke: var(--ink); stroke-width: 2; fill: none; }
+
+/* roster */
+.roster { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.roster th { text-align: left; font-size: 0.7rem; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); }
+.roster td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+.roster .grp td { padding-top: 14px; font-family: var(--f-display); font-stretch: 112%; font-weight: 700; border-bottom: 1px solid var(--rule); }
+.roster .nm { font-weight: 650; }
+.roster .ab { color: var(--ink-2); font-size: 0.8rem; max-width: 30rem; }
+.roster td.num { text-align: right; white-space: nowrap; }
+.sharebar { display: inline-block; height: 8px; background: var(--fill); width: 5rem; border-radius: 2px; vertical-align: middle; margin-right: 8px; position: relative; overflow: hidden; }
+.sharebar i { position: absolute; left: 0; top: 0; bottom: 0; }
+.table-wrap { overflow-x: auto; }
+label.tg { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 16px 28px; margin-top: 1.6rem; }
+.notes p { color: var(--ink-2); font-size: 0.92rem; }
+.notes h3 { font-family: var(--f-display); font-stretch: 112%; font-weight: 700; }
+footer { margin-top: 2rem; border-top: 1px solid var(--rule); padding-top: 0.8rem; font-size: 0.82rem; color: var(--ink-3); }
+@media (max-width: 560px) {
+  .board .fam, .board .due { display: none; }
+  .quote { min-width: 6rem; }
+}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">A logical-induction market in facts about numbers</p>
+  <h1>The Arithmetic Exchange</h1>
+  <p class="lede">Each day the exchange lists new facts about numbers: is this one prime, is that digit of π a 3, does this number take long to fall under the Collatz map. Traders bet on them using simple heuristics, and a slow prover settles each bet a few days later. The prices are the market's probabilities, set by LIA-fast so that no trader here can exploit them.</p>
+</header>
+
+<div class="strip" role="toolbar" aria-label="Market controls">
+  <div class="daybox"><span class="label">Day</span><b id="day">0</b></div>
+  <button id="run" class="primary" type="button">Pause</button>
+  <button id="next" type="button">Next day</button>
+  <button id="skip" type="button">Skip ahead 500 days</button>
+  <span class="ctl"><span class="seg-label">Speed</span>
+    <span class="seg" role="group" aria-label="Speed">
+      <button type="button" data-speed="3" aria-pressed="false">Slow</button>
+      <button type="button" data-speed="20" aria-pressed="true">Steady</button>
+      <button type="button" data-speed="max" aria-pressed="false">Fast</button>
+    </span>
+  </span>
+  <span class="ctl"><span class="seg-label">Prior</span>
+    <span class="seg" role="group" aria-label="Prior weights">
+      <button type="button" data-prior="paper" aria-pressed="true">Exponential</button>
+      <button type="button" data-prior="fast" aria-pressed="false">Heavy-tailed</button>
+    </span>
+  </span>
+  <button id="reset" type="button">Start over</button>
+</div>
+
+<div class="floor">
+  <section class="panel" aria-labelledby="board-title">
+    <div class="panel-head">
+      <h2 id="board-title">Today's listings</h2>
+      <span class="small muted">Price in cents. A share pays $1 if the prover confirms the fact. Ticks mark each trader's opinion; taller ticks carry more weight.</span>
+    </div>
+    <div class="table-wrap"><table class="board" aria-label="Today's listings"><tbody id="board"></tbody></table></div>
+    <div class="tip" id="board-tip" hidden></div>
+  </section>
+
+  <div class="side">
+    <section class="panel ask" aria-labelledby="ask-title">
+      <div class="panel-head"><h2 id="ask-title">Ask the exchange</h2></div>
+      <form id="ask-form">
+        <label for="ask-n" class="small muted">Is this number prime?</label>
+        <input id="ask-n" type="number" min="2" step="1" value="1000003" inputmode="numeric">
+        <button class="primary" type="submit">Quote it</button>
+        <button id="ask-list" type="button">List it tomorrow</button>
+      </form>
+      <div class="out" id="ask-out"></div>
+    </section>
+    <section class="panel" aria-labelledby="tape-title">
+      <div class="panel-head"><h2 id="tape-title">Settled by the prover</h2><span class="small muted">newest first</span></div>
+      <ul class="tape" id="tape"></ul>
+    </section>
+  </div>
+</div>
+
+<div class="charts">
+  <section class="panel" aria-labelledby="share-title">
+    <div class="panel-head">
+      <h2 id="share-title">Who the market listens to</h2>
+      <span class="seg" role="tablist" aria-label="Fact family">
+        <button type="button" data-fam="prime" aria-pressed="true">Primes</button>
+        <button type="button" data-fam="pi" aria-pressed="false">Digits of π</button>
+        <button type="button" data-fam="collatz" aria-pressed="false">Collatz</button>
+      </span>
+    </div>
+    <p class="small muted" style="margin-top:0">Each band is a trader's share of the say in that family's prices, day by day. A trader loses its say as its losses eat through its budgets.</p>
+    <div class="canvas-wrap" id="share-wrap">
+      <canvas id="shares" role="img" aria-label="Stacked shares of influence per trader over time"></canvas>
+      <div class="tip" id="share-tip" hidden></div>
+    </div>
+    <div class="legend" id="share-legend"></div>
+  </section>
+  <section class="panel" aria-labelledby="cal-title">
+    <div class="panel-head"><h2 id="cal-title">Calibration</h2><span class="small muted" id="cal-fam">Primes</span></div>
+    <p class="small muted" style="margin-top:0">Of the facts the market priced near x¢, how many turned out true. On the dashed line, the prices are honest probabilities. Last 1,500 settled facts.</p>
+    <div class="canvas-wrap" id="cal-wrap">
+      <svg id="cal" viewBox="0 0 360 300" width="100%" role="img" aria-label="Calibration: market price against observed frequency"></svg>
+      <div class="tip" id="cal-tip" hidden></div>
+    </div>
+    <p class="small" id="cal-score"></p>
+  </section>
+</div>
+
+<section class="panel" style="margin-top:16px" aria-labelledby="roster-title">
+  <div class="panel-head">
+    <h2 id="roster-title">The traders</h2>
+    <span class="small muted">Listed in prior order: earlier traders start with more weight, as shorter programs would. Changing the line-up starts the market over.</span>
+  </div>
+  <div class="table-wrap">
+    <table class="roster">
+      <thead><tr><th>In</th><th>Trader and heuristic</th><th class="num">Say now</th><th class="num">Brier score</th><th class="num">Worst loss</th></tr></thead>
+      <tbody id="roster"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="notes">
+  <div>
+    <h3>Prices are probabilities</h3>
+    <p>Every day the exchange finds prices at which the combined, budget-limited bets of all traders make almost no money in any outcome. That is the fixed point at the heart of logical induction, and it makes each price an honest probability with respect to the traders on the floor.</p>
+  </div>
+  <div>
+    <h3>Heuristics compete</h3>
+    <p>Traders that keep losing burn through their budgets and lose their say. The Optimist is gone within weeks. Lucky sevens fades more slowly, because each of its mistakes is small. The sieves overtake the prime number theorem, because they know more about each number.</p>
+  </div>
+  <div>
+    <h3>Two priors</h3>
+    <p>The exponential prior is the original paper's: trader k starts with weight 2<sup>−k</sup> and each budget b with 2<sup>−b</sup>, so losers are written off fast. The heavy-tailed prior is LIA-fast's: 1/(k(k+1)) and slowly decaying budget weights. It guarantees that a good trader far down a long list is heard within polynomially many days, but on a small floor like this one it is slower to give up on a loser.</p>
+  </div>
+  <div>
+    <h3>Computable facts snap to 0 or 1</h3>
+    <p>Collatz facts are cheap to compute, so the trader that simply runs the sequence takes over and those prices go to 0¢ or 100¢. Switch on Miller–Rabin or Computes π in the roster to see the same happen for primes and digits. With them off, π's digits stay near 10¢: the right answer for a reasoner who cannot compute them.</p>
+  </div>
+</div>
+
+<footer>
+  Prices come from LIA-fast, the faster logical induction algorithm (Garrabrant et al., <a href="https://arxiv.org/abs/1609.03543">arXiv:1609.03543</a>, §5, with the speedups described in the companion write-up). The prover is simulated: it checks each fact with an exact computation and announces the answer a few days after listing. Larger numbers take longer.
+</footer>
+</div>
+
+<script id="engine">
+"use strict";
+// LIA-fast: a logical inductor (Garrabrant et al. 2016, Sec. 5) with the speedups described above.
+// Port of lia.py. Pure JS, no dependencies.
+
+// ---------------------------------------------------------------- sentences
+const SENT = new Map();
+function intern(key, op, a, b, i) {
+  let s = SENT.get(key);
+  if (!s) { s = { key, op, a, b, i, at: null }; SENT.set(key, s); }
+  return s;
+}
+const atom = i => intern("a" + i, "a", null, null, i);
+const neg = s => intern("¬" + s.key, "~", s, null);
+const conj = (s, t) => intern("(" + s.key + "∧" + t.key + ")", "&", s, t);
+const disj = (s, t) => intern("(" + s.key + "∨" + t.key + ")", "|", s, t);
+
+function atomsOf(s) {
+  if (!s.at) {
+    if (s.op === "a") s.at = [s.i];
+    else if (s.op === "~") s.at = atomsOf(s.a);
+    else s.at = [...new Set([...atomsOf(s.a), ...atomsOf(s.b)])];
+  }
+  return s.at;
+}
+function holds(s, asg) {
+  switch (s.op) {
+    case "a": return asg.get(s.i);
+    case "~": return !holds(s.a, asg);
+    case "&": return holds(s.a, asg) && holds(s.b, asg);
+    default: return holds(s.a, asg) || holds(s.b, asg);
+  }
+}
+
+// ---------------------------------------------------------------- PC(D)
+// Worlds propositionally consistent with D, queried on finite sets of sentences.  Atoms are
+// linked when they share a query sentence or a sentence of D; a linear objective over PC(D)
+// then splits exactly into independent per-component minima.
+const COUNT = { oracle: 0 };
+class WorldSpace {
+  constructor(D) {
+    this.fixed = new Map(); this.cons = []; this.byAtom = new Map(); this.cache = new Map();
+    this.add(D || []);
+  }
+  add(D) {
+    for (const s of D) {
+      if (s.op === "a") this.fix(s.i, true);
+      else if (s.op === "~" && s.a.op === "a") this.fix(s.a.i, false);
+      else {
+        this.cons.push(s);
+        for (const a of atomsOf(s)) {
+          if (!this.byAtom.has(a)) this.byAtom.set(a, []);
+          this.byAtom.get(a).push(s);
+        }
+      }
+    }
+    this.cache.clear();
+  }
+  fix(a, v) {
+    if (this.fixed.has(a) && this.fixed.get(a) !== v) throw new Error("deductive process is inconsistent");
+    this.fixed.set(a, v);
+  }
+  components(sentences) {
+    const uniq = [...new Set(sentences)];
+    const key = uniq.map(s => s.key).sort().join("|");
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const parent = new Map();
+    const find = x => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    const union = (x, y) => {
+      if (!parent.has(x)) parent.set(x, x);
+      if (!parent.has(y)) parent.set(y, y);
+      const rx = find(x), ry = find(y);
+      if (rx !== ry) parent.set(rx, ry);
+    };
+    const frontier = [];
+    for (const s of uniq) {
+      const at = atomsOf(s);
+      for (const a of at) { if (!parent.has(a)) parent.set(a, a); frontier.push(a); }
+      for (const a of at) union(at[0], a);
+    }
+    const seen = new Set(), used = [], visited = new Set();
+    while (frontier.length) {
+      const a = frontier.pop();
+      if (visited.has(a)) continue;
+      visited.add(a);
+      for (const c of this.byAtom.get(a) || []) {
+        if (seen.has(c)) continue;
+        seen.add(c); used.push(c);
+        const ca = atomsOf(c);
+        for (const b of ca) { union(ca[0], b); if (!visited.has(b)) frontier.push(b); }
+      }
+    }
+    const groups = new Map();
+    const g = r => { if (!groups.has(r)) groups.set(r, { atoms: [], sents: [], cons: [] }); return groups.get(r); };
+    for (const a of parent.keys()) g(find(a)).atoms.push(a);
+    for (const s of uniq) g(find(atomsOf(s)[0])).sents.push(s);
+    for (const c of used) g(find(atomsOf(c)[0])).cons.push(c);
+    const comps = [];
+    for (const { atoms, sents, cons } of groups.values()) {
+      if (!sents.length) continue;
+      const free = atoms.filter(a => !this.fixed.has(a));
+      if (free.length > 22) throw new Error("component with " + free.length + " free atoms");
+      const asg = new Map();
+      for (const a of atoms) if (this.fixed.has(a)) asg.set(a, this.fixed.get(a));
+      const vecs = new Map();
+      for (let m = 0; m < (1 << free.length); m++) {
+        for (let i = 0; i < free.length; i++) asg.set(free[i], ((m >> i) & 1) === 1);
+        if (cons.every(c => holds(c, asg))) {
+          const v = sents.map(s => (holds(s, asg) ? 1 : 0));
+          vecs.set(v.join(""), v);
+        }
+      }
+      if (!vecs.size) throw new Error("PC(D) is empty");
+      comps.push({ sents, vecs: [...vecs.values()] });
+    }
+    this.cache.set(key, comps);
+    return comps;
+  }
+  // min over W in PC(D) of  cash + sum_phi coef(phi) W(phi)
+  minLinear(cash, coef /* Map sentence -> number */) {
+    COUNT.oracle++;
+    let tot = cash;
+    for (const { sents, vecs } of this.components([...coef.keys()])) {
+      const c = sents.map(s => coef.get(s));
+      let best = Infinity;
+      for (const v of vecs) { let x = 0; for (let i = 0; i < v.length; i++) if (v[i]) x += c[i]; if (x < best) best = x; }
+      tot += best;
+    }
+    return tot;
+  }
+}
+
+class DeductiveProcess {
+  // D_n = sentences revealed on days <= n; reveal(n, history) may look at P_1..P_{n-1}.
+  constructor(reveal) { this.reveal = reveal; this.D = new Set(); this.day = 0; this.ws = new WorldSpace([]); }
+  advance(n, history) {
+    const add = this.reveal(n, history);
+    for (const s of add) this.D.add(s);
+    this.day = n;
+    this.ws.add(add);
+    return this.ws;
+  }
+}
+
+// ---------------------------------------------------------------- expressible features
+// Rationals, price features, +, *, max and safe reciprocation 1/max(1,x)  (paper, Def. 3.4.4).
+const lift = x => (typeof x === "number" ? { t: "c", q: x } : x);
+const Price = (s, day) => ({ t: "p", s, day });
+const add = (a, b) => ({ t: "+", a: lift(a), b: lift(b) });
+const mul = (a, b) => ({ t: "*", a: lift(a), b: lift(b) });
+const sub = (a, b) => add(a, mul(-1, b));
+const fmax = (a, b) => ({ t: "max", a: lift(a), b: lift(b) });
+const fmin = (a, b) => mul(-1, fmax(mul(-1, a), mul(-1, b)));
+const clip = (x, lo, hi) => fmin(fmax(x, lo), hi);
+const safeRecip = a => ({ t: "rcp", a: lift(a) });
+
+// Compile an n-strategy {sentence: feature} into a register program.  Past prices fold to
+// constants; interval bounds and l_inf-Lipschitz constants (in today's prices) come from
+// structural induction, exactly as the paper bounds C_n.
+class Strategy {
+  constructor(coeffs /* Map sentence -> feature */, n, history) {
+    this.sents = [...coeffs.keys()];
+    const prog = [], lo = [], hi = [], lip = [], memo = new Map();
+    const reg = node => {
+      if (memo.has(node)) return memo.get(node);
+      let r, b0, b1, L;
+      if (node.t === "c") { r = prog.length; prog.push([0, node.q]); b0 = b1 = node.q; L = 0; }
+      else if (node.t === "p") {
+        if (node.day < n) {
+          const v = node.day >= 1 ? (history[node.day - 1].get(node.s) ?? 0) : 0;
+          r = prog.length; prog.push([0, v]); b0 = b1 = v; L = 0;
+        } else if (node.day === n) { r = prog.length; prog.push([1, node.s]); b0 = 0; b1 = 1; L = 1; }
+        else throw new Error("feature refers to a future price");
+      } else if (node.t === "rcp") {
+        const a = reg(node.a);
+        r = prog.length; prog.push([5, a]);
+        b0 = 1 / Math.max(1, hi[a]); b1 = 1 / Math.max(1, lo[a]); L = lip[a];
+      } else {
+        const a = reg(node.a), b = reg(node.b);
+        r = prog.length;
+        if (node.t === "+") { prog.push([2, a, b]); b0 = lo[a] + lo[b]; b1 = hi[a] + hi[b]; L = lip[a] + lip[b]; }
+        else if (node.t === "*") {
+          prog.push([3, a, b]);
+          const pr = [lo[a] * lo[b], lo[a] * hi[b], hi[a] * lo[b], hi[a] * hi[b]];
+          b0 = Math.min(...pr); b1 = Math.max(...pr);
+          L = lip[a] * Math.max(Math.abs(lo[b]), Math.abs(hi[b])) + lip[b] * Math.max(Math.abs(lo[a]), Math.abs(hi[a]));
+        } else { prog.push([4, a, b]); b0 = Math.max(lo[a], lo[b]); b1 = Math.max(hi[a], hi[b]); L = Math.max(lip[a], lip[b]); }
+      }
+      lo[r] = b0; hi[r] = b1; lip[r] = L; memo.set(node, r);
+      return r;
+    };
+    this.outs = this.sents.map(s => reg(lift(coeffs.get(s))));
+    this.prog = prog;
+    this.R = new Float64Array(prog.length);
+    this.bounds = this.outs.map(o => Math.max(Math.abs(lo[o]), Math.abs(hi[o])));
+    this.lips = this.outs.map(o => lip[o]);
+    this.valueLip = this.bounds.reduce((acc, B, i) => acc + B + this.lips[i], 0);
+  }
+  eval(P /* Map sentence -> today's price */) {
+    const R = this.R, prog = this.prog;
+    for (let i = 0; i < prog.length; i++) {
+      const ins = prog[i];
+      switch (ins[0]) {
+        case 0: R[i] = ins[1]; break;
+        case 1: R[i] = P.get(ins[1]) ?? 0; break;
+        case 2: R[i] = R[ins[1]] + R[ins[2]]; break;
+        case 3: R[i] = R[ins[1]] * R[ins[2]]; break;
+        case 4: R[i] = R[ins[1]] > R[ins[2]] ? R[ins[1]] : R[ins[2]]; break;
+        default: { const x = R[ins[1]]; R[i] = 1 / (x > 1 ? x : 1); }
+      }
+    }
+    return this.outs.map(o => R[o]);
+  }
+}
+
+// ---------------------------------------------------------------- Lemma 1: the world-free check
+// max over ALL worlds W of W(T(p)) = sum_phi T_phi^+ (1 - p_phi) + T_phi^- p_phi
+function gap(t, p) {
+  let g = 0;
+  for (let i = 0; i < t.length; i++) g += t[i] > 0 ? t[i] * (1 - p[i]) : -t[i] * p[i];
+  return g;
+}
+// the paper's check, literally: enumerate all 2^d worlds
+function maxOverAllWorlds(t, p) {
+  let cash = 0;
+  for (let i = 0; i < t.length; i++) cash -= t[i] * p[i];
+  let best = -Infinity;
+  for (let m = 0; m < (1 << t.length); m++) {
+    let v = cash;
+    for (let i = 0; i < t.length; i++) if ((m >> i) & 1) v += t[i];
+    if (v > best) best = v;
+  }
+  return best;
+}
+
+// ---------------------------------------------------------------- weights and budgets
+// fast : trader weight 1/(k(k+1)); budget 2^j with weight u_j = a_j - a_{j+1}, a_j = 2^-j/(j+1)^2
+//        (telescoping: every tail sum is the rational a_J); alive while M <= b/2.
+// paper: trader weight 2^-k; integer budget b with weight 2^-b; alive while M < b.
+const FastSchedule = {
+  name: "fast",
+  traderWeight: k => 1 / (k * (k + 1)),
+  budget: j => 2 ** j,
+  a: j => 2 ** -j / ((j + 1) * (j + 1)),
+  levelWeight(j) { return this.a(j) - this.a(j + 1); },
+  firstAlive: M => (M <= 0.5 ? 0 : Math.max(0, Math.ceil(Math.log2(2 * M) - 1e-12))),
+  firstSaturated: L => (L <= 1 ? 0 : Math.max(0, Math.ceil(Math.log2(L) - 1e-12))),
+  tail(j) { return j < 1000 ? this.a(j) : 0; },
+};
+const PaperSchedule = {
+  name: "paper",
+  traderWeight: k => 2 ** -k,
+  budget: j => j,
+  levelWeight: j => 2 ** -j,
+  firstAlive: M => Math.max(1, Math.floor(M) + 1),
+  firstSaturated: L => Math.max(1, Math.ceil(L)),
+  tail: j => 2 ** (1 - j),
+};
+
+// ---------------------------------------------------------------- one trader inside the firm, one day
+class DayTrader {
+  constructor(st, strat, ws, sched) {
+    this.st = st; this.strat = strat; this.sched = sched;
+    this.w = sched.traderWeight(st.k);
+    this.jlo = sched.firstAlive(st.M);
+    const spos = new Map(strat.sents.map((s, i) => [s, i]));
+    this.comps = ws.components([...st.H.keys(), ...strat.sents]).map(({ sents, vecs }) => ({
+      vecs,
+      hv: vecs.map(v => sents.reduce((acc, s, i) => acc + (st.H.get(s) ?? 0) * v[i], 0)),
+      cols: sents.map((s, i) => [spos.get(s), i]).filter(([si]) => si !== undefined),
+    }));
+  }
+  // argmin over W in PC(D_n) of W(H) + alpha W(S); returns [W(H), W(S)] at the minimiser
+  argmin(s, sCash, alpha) {
+    COUNT.oracle++;
+    let h = this.st.Hcash, x = sCash;
+    for (const { vecs, hv, cols } of this.comps) {
+      let bv = Infinity, bh = 0, bx = 0;
+      for (let k = 0; k < vecs.length; k++) {
+        const v = vecs[k];
+        let xv = 0;
+        for (const [si, ci] of cols) if (v[ci]) xv += s[si];
+        const val = hv[k] + alpha * xv;
+        if (val < bv) { bv = val; bh = hv[k]; bx = xv; }
+      }
+      h += bh; x += bx;
+    }
+    return [h, x];
+  }
+  // sum over alive budget levels j of u_j * alpha_j(p): finitely many unsaturated levels
+  // plus a closed-form tail (Lemma 5)
+  factor(s, prices) {
+    const sch = this.sched;
+    let sCash = 0;
+    for (let i = 0; i < s.length; i++) sCash -= s[i] * prices[i];
+    const [h1, x1] = this.argmin(s, sCash, 1);
+    const L = -(h1 + x1);
+    const jsat = Math.max(this.jlo, sch.firstSaturated(L));
+    let tot = sch.tail(jsat);
+    for (let j = this.jlo; j < jsat; j++) tot += sch.levelWeight(j) * this.newton(sch.budget(j), s, sCash, h1, x1);
+    return tot;
+  }
+  // largest alpha in [0,1] with min_W [b + W(H) + alpha W(S)] >= 0  (Newton-Dinkelbach, Lemma 4)
+  newton(b, s, sCash, h, x) {
+    let alpha = 1;
+    for (let it = 0; it < 10000; it++) {
+      if (b + h + alpha * x >= -1e-12 * (1 + b)) return alpha;
+      alpha = (b + h) / -x;
+      [h, x] = this.argmin(s, sCash, alpha);
+    }
+    throw new Error("Newton did not terminate");
+  }
+}
+
+// TF_n(p) = sum_k w_k [sum_j u_j alpha_{k,j}(p)] S^k_n(p)
+class TradingFirm {
+  constructor(dts, sched) {
+    this.dts = dts; this.sched = sched; this.evals = 0;
+    const supp = [], index = new Map();
+    for (const dt of dts) for (const s of dt.strat.sents) if (!index.has(s)) { index.set(s, supp.length); supp.push(s); }
+    this.supp = supp;
+    this.maps = dts.map(dt => dt.strat.sents.map(s => index.get(s)));
+  }
+  eval(p) {
+    this.evals++;
+    const P = new Map(this.supp.map((s, i) => [s, p[i]]));
+    const out = new Array(this.supp.length).fill(0);
+    for (let k = 0; k < this.dts.length; k++) {
+      const dt = this.dts[k], mp = this.maps[k];
+      const s = dt.strat.eval(P);
+      if (s.every(x => x === 0)) continue;
+      const c = dt.w * dt.factor(s, mp.map(i => p[i]));
+      if (c === 0) continue;
+      for (let i = 0; i < mp.length; i++) out[mp[i]] += c * s[i];
+    }
+    return out;
+  }
+  // l_inf-Lipschitz bound for p -> gap(TF(p), p)  (needs the margin; fast schedule only)
+  lipschitzOfGap() {
+    const sch = this.sched, B = new Array(this.supp.length).fill(0), L = B.slice();
+    this.dts.forEach((dt, k) => {
+      const mass = sch.tail(dt.jlo);
+      let inv = 0;
+      for (let j = dt.jlo; j < dt.jlo + 200; j++) inv += sch.levelWeight(j) / sch.budget(j);
+      const la = 2 * dt.strat.valueLip * inv;
+      this.maps[k].forEach((i, q) => {
+        B[i] += dt.w * mass * dt.strat.bounds[q];
+        L[i] += dt.w * (la * dt.strat.bounds[q] + mass * dt.strat.lips[q]);
+      });
+    });
+    return B.reduce((acc, b, i) => acc + b + L[i], 0);
+  }
+}
+
+// ---------------------------------------------------------------- MarketMaker
+// Find p in [0,1]^d with gap(TF(p), p) <= eps.  Heuristics are verified by the exact O(d) gap;
+// the Lipschitz subdivision fallback is complete (Prop. 3).
+const proj = x => (x < 0 ? 0 : x > 1 ? 1 : x);
+const norm = v => Math.sqrt(v.reduce((acc, x) => acc + x * x, 0));
+
+function mmBisect1d(T, eps) {
+  if (T([1])[0] >= 0) return [1];
+  if (T([0])[0] <= 0) return [0];
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2, t = T([mid])[0];
+    if (gap([t], [mid]) <= eps) return [mid];
+    if (t > 0) lo = mid; else hi = mid;
+  }
+  return [(lo + hi) / 2];
+}
+
+function solveLinear(A, b) {
+  const n = b.length, M = A.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-300) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    for (let r = c + 1; r < n; r++) {
+      const f = M[r][c] / M[c][c];
+      if (f) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {
+    let acc = M[r][n];
+    for (let k = r + 1; k < n; k++) acc -= M[r][k] * x[k];
+    x[r] = acc / M[r][r];
+  }
+  return x;
+}
+
+// Levenberg-Marquardt on the natural-map residual r(p) = p - Proj(p + c T(p))
+function mmNewton(T, p, eps, maxIter = 60) {
+  const d = p.length;
+  let t = T(p);
+  const c = 1 / Math.max(1e-12, ...t.map(Math.abs));
+  const resid = (q, tq) => q.map((qi, i) => qi - proj(qi + c * tq[i]));
+  let r = resid(p, t), nr = r.reduce((a, x) => a + x * x, 0), g = gap(t, p);
+  let best = [g, p], lam = 1e-6;
+  for (let it = 0; it < maxIter; it++) {
+    if (g <= eps) return [p, g];
+    const J = Array.from({ length: d }, () => new Array(d).fill(0));
+    for (let j = 0; j < d; j++) {
+      const h = p[j] < 0.5 ? 1e-7 : -1e-7, q = p.slice();
+      q[j] += h;
+      const rq = resid(q, T(q));
+      for (let i = 0; i < d; i++) J[i][j] = (rq[i] - r[i]) / h;
+    }
+    const JTJ = Array.from({ length: d }, (_, i) => Array.from({ length: d }, (_, j) => {
+      let s = 0; for (let k = 0; k < d; k++) s += J[k][i] * J[k][j]; return s;
+    }));
+    const JTr = Array.from({ length: d }, (_, i) => { let s = 0; for (let k = 0; k < d; k++) s += J[k][i] * r[k]; return s; });
+    let improved = false;
+    for (let ls = 0; ls < 12; ls++) {
+      const A = JTJ.map((row, i) => row.map((v, j) => (i === j ? v + lam * (1 + JTJ[i][i]) : v)));
+      const step = solveLinear(A, JTr.map(x => -x));
+      if (!step) { lam *= 10; continue; }
+      const q = p.map((pi, i) => proj(pi + step[i])), tq = T(q), rq = resid(q, tq);
+      const nq = rq.reduce((a, x) => a + x * x, 0);
+      if (nq < nr) {
+        p = q; t = tq; r = rq; nr = nq; g = gap(t, p);
+        if (g < best[0]) best = [g, p];
+        lam = Math.max(1e-12, lam / 10); improved = true; break;
+      }
+      lam *= 10;
+    }
+    if (!improved) break;
+  }
+  return [best[1], best[0]];
+}
+
+// projected extragradient with Khobotov backtracking
+function mmExtragradient(T, p, eps, maxIter = 2000) {
+  let t = T(p), g = gap(t, p), best = [g, p], eta = 1;
+  for (let it = 0; it < maxIter; it++) {
+    if (g <= eps) return [p, g];
+    let y, ty;
+    for (;;) {
+      y = p.map((pi, i) => proj(pi + eta * t[i]));
+      ty = T(y);
+      const gy = gap(ty, y);
+      if (gy <= eps) return [y, gy];
+      const dy = norm(y.map((v, i) => v - p[i])), dt = norm(ty.map((v, i) => v - t[i]));
+      if (eta * dt <= 0.9 * dy + 1e-18 || eta < 1e-12) break;
+      eta *= 0.5;
+    }
+    p = p.map((pi, i) => proj(pi + eta * ty[i]));
+    t = T(p); g = gap(t, p);
+    if (g < best[0]) best = [g, p];
+    eta *= 1.5;
+  }
+  return [best[1], best[0]];
+}
+
+// nonlinear Gauss-Seidel: each 1-d complementarity problem by bisection
+function mmCoordinate(T, p, eps, sweeps = 60) {
+  p = p.slice();
+  let g = gap(T(p), p);
+  for (let sw = 0; sw < sweeps && g > eps; sw++) {
+    for (let i = 0; i < p.length; i++) {
+      const h = x => { const q = p.slice(); q[i] = x; return T(q)[i]; };
+      if (h(1) >= 0) p[i] = 1;
+      else if (h(0) <= 0) p[i] = 0;
+      else {
+        let lo = 0, hi = 1;
+        for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; if (h(mid) > 0) lo = mid; else hi = mid; }
+        p[i] = (lo + hi) / 2;
+      }
+    }
+    g = gap(T(p), p);
+  }
+  return [p, g];
+}
+
+// complete fallback: best-first box subdivision; a box whose centre has gap > lip*radius holds no zero
+function mmSubdivide(T, d, eps, lip, maxCells = 200000) {
+  const heap = [];
+  const push = e => { heap.push(e); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; } };
+  const pop = () => {
+    const top = heap[0], last = heap.pop();
+    if (heap.length) {
+      heap[0] = last; let i = 0;
+      for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; }
+    }
+    return top;
+  };
+  const centre = (lo, hi) => lo.map((a, i) => (a + hi[i]) / 2);
+  let lo = new Array(d).fill(0), hi = new Array(d).fill(1), c = centre(lo, hi);
+  push([gap(T(c), c), lo, hi, c]);
+  for (let cells = 0; heap.length && cells < maxCells; cells++) {
+    const [g, blo, bhi, bc] = pop();
+    if (g <= eps) return [bc, g];
+    let w = 0;
+    for (let k = 1; k < d; k++) if (bhi[k] - blo[k] > bhi[w] - blo[w]) w = k;
+    const mid = (blo[w] + bhi[w]) / 2;
+    for (const [a, b] of [[blo[w], mid], [mid, bhi[w]]]) {
+      const nlo = blo.slice(), nhi = bhi.slice();
+      nlo[w] = a; nhi[w] = b;
+      const nc = centre(nlo, nhi), ng = gap(T(nc), nc);
+      const r = Math.max(...nlo.map((x, i) => (nhi[i] - x) / 2));
+      if (ng <= lip * r + 1e-15) push([ng, nlo, nhi, nc]);
+    }
+  }
+  throw new Error("subdivision gave up (cell cap)");
+}
+
+function marketMaker(TF, eps, warm, lipFn) {
+  const d = TF.supp.length, e0 = TF.evals, T = p => TF.eval(p);
+  if (d === 0) return { p: [], gap: 0, method: "empty", evals: 0 };
+  if (d === 1) { const p = mmBisect1d(T, eps); return { p, gap: gap(T(p), p), method: "bisection", evals: TF.evals - e0 }; }
+  let p = TF.supp.map(s => warm.get(s) ?? 0.5);
+  let g = gap(T(p), p);
+  if (g <= eps) return { p, gap: g, method: "warm start", evals: TF.evals - e0 };
+  for (const [name, solver] of [["Newton", mmNewton], ["extragradient", mmExtragradient], ["Gauss–Seidel", mmCoordinate]]) {
+    [p, g] = solver(T, p, eps);
+    if (g <= eps && gap(T(p), p) <= eps) return { p, gap: g, method: name, evals: TF.evals - e0 };
+  }
+  if (!lipFn || d > 8) throw new Error("heuristics failed and no guaranteed fallback for d = " + d);
+  [p, g] = mmSubdivide(T, d, eps, lipFn());
+  return { p, gap: g, method: "subdivision", evals: TF.evals - e0 };
+}
+
+// ---------------------------------------------------------------- the outer recursion
+// P_n := MarketMaker_n(TradingFirm_n(P_<n), P_<n)
+class Market {
+  constructor(traders, dp, { schedule = FastSchedule, tol = n => 1e-3 / (n * n) } = {}) {
+    this.dp = dp; this.sched = schedule; this.tol = tol;
+    this.states = traders.map((trader, i) => ({ k: i + 1, trader, start: i + 1, H: new Map(), Hcash: 0, M: 0 }));
+    this.history = []; this.day = 0; this.firmValue = 0; this.sumEps = 0;
+  }
+  step() {
+    const n = this.day + 1, t0 = performance.now();
+    COUNT.oracle = 0;
+    const ws = this.dp.advance(n, this.history);
+    const active = this.states.filter(st => st.start <= n);
+    const strats = active.map(st => new Strategy(st.trader.strategy(n, this.history, this.dp), n, this.history));
+    const TF = new TradingFirm(active.map((st, i) => new DayTrader(st, strats[i], ws, this.sched)), this.sched);
+    const eps = this.tol(n);
+    const res = marketMaker(TF, eps, this.history.at(-1) ?? new Map(), this.sched === FastSchedule ? () => TF.lipschitzOfGap() : null);
+    const P = new Map(TF.supp.map((s, i) => [s, res.p[i]]));
+    this.history.push(P);
+    const g = gap(TF.eval(res.p), res.p);
+    this.firmValue += g; this.sumEps += eps;
+    // raw holdings, worst plausible loss M, settlement of decided sentences
+    active.forEach((st, i) => {
+      const sg = strats[i], s = sg.eval(P);
+      sg.sents.forEach((x, q) => {
+        if (s[q] !== 0) { st.H.set(x, (st.H.get(x) ?? 0) + s[q]); st.Hcash -= s[q] * (P.get(x) ?? 0); }
+      });
+      if (st.H.size) {
+        st.M = Math.max(st.M, -ws.minLinear(st.Hcash, st.H));
+        for (const { sents, vecs } of ws.components([...st.H.keys()]))
+          sents.forEach((x, q) => {
+            if (vecs.every(v => v[q] === vecs[0][q])) { st.Hcash += st.H.get(x) * vecs[0][q]; st.H.delete(x); }
+          });
+      }
+    });
+    this.day = n;
+    return { n, d: TF.supp.length, method: res.method, evals: res.evals, gap: g, eps, oracle: COUNT.oracle, ms: performance.now() - t0 };
+  }
+}
+
+// ================================================================ the Arithmetic Exchange
+// Facts about numbers are listed each day, traders bet on them, and a slow prover settles
+// the bets a few days later.  Prices come from LIA-fast (the engine above).
+
+// ---------------------------------------------------------------- number theory
+function rng32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97];
+function modpow(b, e, m) {
+  let r = 1n; b %= m;
+  while (e > 0n) { if (e & 1n) r = (r * b) % m; b = (b * b) % m; e >>= 1n; }
+  return r;
+}
+// deterministic Miller-Rabin, exact for n < 3.3e24
+function isPrime(n) {
+  n = BigInt(n);
+  if (n < 2n) return false;
+  const bases = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
+  for (const p of bases) { if (n === p) return true; if (n % p === 0n) return false; }
+  let d = n - 1n, s = 0;
+  while ((d & 1n) === 0n) { d >>= 1n; s++; }
+  for (const a of bases) {
+    let x = modpow(a, d, n);
+    if (x === 1n || x === n - 1n) continue;
+    let composite = true;
+    for (let r = 1; r < s; r++) { x = (x * x) % n; if (x === n - 1n) { composite = false; break; } }
+    if (composite) return false;
+  }
+  return true;
+}
+// smallest prime factor among primes <= bound (0 if none, or if n itself is that prime)
+function smallFactor(n, bound) {
+  for (const p of SMALL_PRIMES) { if (p > bound) break; if (n !== p && n % p === 0) return p; }
+  return 0;
+}
+// product over primes p <= bound of p/(p-1): how much surviving a sieve raises the odds
+const sieveBoost = bound => SMALL_PRIMES.filter(p => p <= bound).reduce((acc, p) => (acc * p) / (p - 1), 1);
+function collatzSteps(m) { let s = 0; while (m !== 1) { m = m % 2 === 0 ? m / 2 : 3 * m + 1; s++; } return s; }
+// decimal digits of pi by the Rabinowitz-Wagon spigot: PI[k] is the k-th digit after the point
+function piDigits(n) {
+  const len = Math.floor((10 * (n + 2)) / 3) + 1, a = new Array(len).fill(2), out = [];
+  let nines = 0, pre = 0;
+  for (let j = 0; j < n + 2; j++) {
+    let q = 0;
+    for (let i = len; i > 0; i--) { const x = 10 * a[i - 1] + q * i; a[i - 1] = x % (2 * i - 1); q = Math.floor(x / (2 * i - 1)); }
+    a[0] = q % 10; q = Math.floor(q / 10);
+    if (q === 9) nines++;
+    else if (q === 10) { out.push(pre + 1); for (let k = 0; k < nines; k++) out.push(0); pre = 0; nines = 0; }
+    else { out.push(pre); pre = q; for (let k = 0; k < nines; k++) out.push(9); nines = 0; }
+  }
+  return out.slice(2);   // drop the leading 0 and the 3
+}
+
+// ---------------------------------------------------------------- facts
+const FAMILIES = {
+  prime: { label: "Primes", perDay: 8 },
+  pi: { label: "Digits of π", perDay: 2 },
+  collatz: { label: "Collatz", perDay: 2 },
+};
+const COLLATZ_T = 110;
+
+class Exchange {
+  constructor(traderSpecs, seed = 20161) {
+    this.rng = rng32(seed);
+    this.items = new Map();          // sentence -> fact
+    this.byDay = new Map();          // day -> facts listed that day
+    this.dueOn = new Map();          // day -> facts the prover settles that day
+    this.resolved = [];
+    this.stats = { prime: new Map(), collatz: [0, 0] };   // what the learners have seen
+    this.nextAtom = 0;
+    this.queue = [];                  // facts a visitor asked about, listed tomorrow
+    this.specs = traderSpecs;
+    const dp = new DeductiveProcess(n => {
+      const out = [];
+      for (const f of this.dueOn.get(n) || []) {
+        out.push(f.truth ? f.s : neg(f.s));
+        f.settled = n;
+        this.learn(f);
+        this.resolved.push(f);
+      }
+      return out;
+    });
+    this.market = new Market(traderSpecs.map(spec => this.makeTrader(spec)), dp);
+  }
+  get day() { return this.market.day; }
+  primeBucket(n) { return (smallFactor(n, 7) ? "x" : "s") + Math.floor(Math.log10(n)); }
+  learn(f) {
+    if (f.family === "prime") {
+      const b = this.primeBucket(f.n), c = this.stats.prime.get(b) || [0, 0];
+      c[0] += f.truth ? 1 : 0; c[1] += 1; this.stats.prime.set(b, c);
+    } else if (f.family === "collatz") { this.stats.collatz[0] += f.truth ? 1 : 0; this.stats.collatz[1] += 1; }
+  }
+  fact(family, data, day) {
+    const s = atom(this.nextAtom++);
+    const f = { s, family, day, ...data };
+    this.items.set(s, f);
+    if (!this.byDay.has(day)) this.byDay.set(day, []);
+    this.byDay.get(day).push(f);
+    if (!this.dueOn.has(f.due)) this.dueOn.set(f.due, []);
+    this.dueOn.get(f.due).push(f);
+    return f;
+  }
+  primeFact(n, day, asked = false) {
+    return this.fact("prime", { n, truth: isPrime(n), due: day + 2 + Math.floor(Math.log10(n) / 2), asked,
+      text: n.toLocaleString("en-US") + " is prime" }, day);
+  }
+  listFacts(day) {
+    const r = this.rng;
+    for (const n of this.queue.splice(0)) this.primeFact(n, day, true);
+    for (let i = 0; i < FAMILIES.prime.perDay; i++) this.primeFact(Math.floor(10 ** (3 + 5 * r())), day);
+    for (let i = 0; i < FAMILIES.pi.perDay; i++) {
+      const k = 1 + Math.floor(PI.length * r()), d = Math.floor(10 * r());
+      this.fact("pi", { k, d, truth: PI[k - 1] === d, due: day + 3, text: "digit " + k + " of π is " + d }, day);
+    }
+    for (let i = 0; i < FAMILIES.collatz.perDay; i++) {
+      const m = 10000 + Math.floor(990000 * r());
+      this.fact("collatz", { m, truth: collatzSteps(m) > COLLATZ_T, due: day + 2,
+        text: m.toLocaleString("en-US") + " takes more than " + COLLATZ_T + " Collatz steps" }, day);
+    }
+  }
+  // a trader is a heuristic opinion(fact) -> probability, traded linearly: c * (opinion - price)
+  makeTrader(spec) {
+    const ex = this;
+    return {
+      name: spec.name,
+      strategy(n) {
+        const m = new Map();
+        for (const f of ex.byDay.get(n) || []) {
+          if (f.family !== spec.family) continue;
+          const q = spec.opinion(f, ex);
+          if (q !== null) m.set(f.s, mul(sub(q, Price(f.s, n)), spec.c ?? 0.25));
+        }
+        return m;
+      },
+    };
+  }
+  step() {
+    const n = this.market.day + 1;
+    this.listFacts(n);
+    const rec = this.market.step();       // the prover reveals day n's facts first, so learners see them
+    const P = this.market.history[n - 1];
+    for (const f of this.byDay.get(n) || []) {
+      f.price = P.get(f.s) ?? 0;
+      f.opinions = this.specs.map(sp => (sp.family === f.family ? sp.opinion(f, this) : null));
+    }
+    return rec;
+  }
+  // each trader's say in today's prices: v_k * (budget mass still alive), normalised per family
+  shares() {
+    const w = this.market.states.map(st => this.market.sched.traderWeight(st.k) * this.market.sched.tail(this.market.sched.firstAlive(st.M)) * (this.specs[st.k - 1].c ?? 0.25));
+    const tot = {};
+    this.specs.forEach((sp, i) => { tot[sp.family] = (tot[sp.family] || 0) + w[i]; });
+    return this.specs.map((sp, i) => w[i] / tot[sp.family]);
+  }
+  // price a fact right now without trading on it: the fixed point of the current firm on one sentence
+  quote(f) {
+    const n = this.market.day + 1, m = this.market, ws = m.dp.ws;
+    const dts = [];
+    m.states.forEach((st, i) => {
+      const sp = this.specs[i];
+      if (sp.family !== f.family) return;
+      const q = sp.opinion(f, this);
+      if (q === null) return;
+      const strat = new Strategy(new Map([[f.s, mul(sub(q, Price(f.s, n)), sp.c ?? 0.25)]]), n, m.history);
+      dts.push(new DayTrader(st, strat, ws, m.sched));
+    });
+    if (!dts.length) return null;
+    const TF = new TradingFirm(dts, m.sched);
+    return mmBisect1d(p => TF.eval(p), 1e-9)[0];
+  }
+}
+
+// ---------------------------------------------------------------- the traders
+const ln = Math.log;
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const TRADERS = [
+  { id: "pnt", family: "prime", name: "Prime number theorem", about: "Any n is prime with probability 1/ln n.",
+    opinion: f => clamp01(1 / ln(f.n)) },
+  { id: "parity", family: "prime", name: "Parity", about: "Even numbers above 2 are composite; odd ones are prime with probability 2/ln n.",
+    opinion: f => (f.n === 2 ? 1 : f.n % 2 === 0 ? 0 : clamp01(2 / ln(f.n))) },
+  { id: "optimist", family: "prime", name: "Optimist", about: "A bad heuristic: odd numbers are prime 90% of the time.",
+    opinion: f => (f.n % 2 === 0 ? 0 : 0.9) },
+  { id: "sieve7", family: "prime", name: "Sieve to 7", about: "Divides by 2, 3, 5 and 7. Survivors are prime with probability 4.375/ln n.",
+    opinion: f => ([2, 3, 5, 7].includes(f.n) ? 1 : smallFactor(f.n, 7) ? 0 : clamp01(sieveBoost(7) / ln(f.n))) },
+  { id: "sieve97", family: "prime", name: "Sieve to 97", about: "Trial division by every prime up to 97. Survivors below 97² are certainly prime; above, about 8.2/ln n.",
+    opinion: f => (SMALL_PRIMES.includes(f.n) ? 1 : smallFactor(f.n, 97) ? 0 : f.n < 9409 ? 1 : clamp01(sieveBoost(97) / ln(f.n))) },
+  { id: "learner", family: "prime", name: "Frequency learner", about: "Sieves to 7, then uses the prime rate it has seen among settled numbers of the same size.",
+    opinion: (f, ex) => {
+      if ([2, 3, 5, 7].includes(f.n)) return 1;
+      if (smallFactor(f.n, 7)) return 0;
+      const c = ex.stats.prime.get(ex.primeBucket(f.n)) || [0, 0];
+      return (c[0] + 1) / (c[1] + 2);
+    } },
+  { id: "mr", family: "prime", name: "Miller–Rabin", about: "Runs a primality test. Exact, and polynomial-time, so a logical inductor must learn to trust it.",
+    opinion: f => (isPrime(f.n) ? 1 : 0), optional: true },
+  { id: "uniform", family: "pi", name: "Uniform digits", about: "Every digit of π is equally likely: 1/10.", opinion: () => 0.1 },
+  { id: "sevens", family: "pi", name: "Lucky sevens", about: "A bad heuristic: π likes the digit 7 (40%), so other digits get 6.7%.",
+    opinion: f => (f.d === 7 ? 0.4 : 0.6 / 9) },
+  { id: "spigot", family: "pi", name: "Computes π", about: "Runs a spigot algorithm for the digit. Exact at these positions.",
+    opinion: f => (PI[f.k - 1] === f.d ? 1 : 0), optional: true },
+  { id: "coin", family: "collatz", name: "Coin flip", about: "No idea: 50%.", opinion: () => 0.5 },
+  { id: "rate", family: "collatz", name: "Base-rate learner", about: "Uses the fraction of settled numbers that took more than " + COLLATZ_T + " steps.",
+    opinion: (f, ex) => (ex.stats.collatz[0] + 1) / (ex.stats.collatz[1] + 2) },
+  { id: "runner", family: "collatz", name: "Runs the sequence", about: "Iterates 3n+1 until it reaches 1. Exact and cheap.",
+    opinion: f => (collatzSteps(f.m) > COLLATZ_T ? 1 : 0) },
+];
+const PI = piDigits(3200);
+</script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = x => Math.round(x).toLocaleString("en-US");
+  const cents = p => Math.round(p * 100) + "¢";
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const FAMS = ["prime", "pi", "collatz"];
+  const MAX_DAYS = 6000;
+
+  let C = {};
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement), t = n => cs.getPropertyValue(n).trim();
+    C = { ink: t("--ink"), ink2: t("--ink-2"), ink3: t("--ink-3"), rule: t("--rule"), rule2: t("--rule-2"), sheet: t("--sheet"),
+      fill: t("--fill"), series: [1, 2, 3, 4, 5, 6, 7].map(i => t("--c" + i)), font: t("--f-body") };
+  }
+  function setupCanvas(cv, h) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth;
+    cv.style.height = h + "px"; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+  function placeTip(tip, wrap, x, y) {
+    const wr = wrap.getBoundingClientRect();
+    let left = x - wr.left + 14, top = y - wr.top + 14;
+    if (left + tip.offsetWidth > wr.width) left = x - wr.left - tip.offsetWidth - 14;
+    tip.style.left = Math.max(0, left) + "px"; tip.style.top = top + "px";
+  }
+
+  // ------------------------------------------------------------ state
+  const enabled = new Set(TRADERS.filter(t => !t.optional).map(t => t.id));
+  let ex, specs, prior = "paper", running = !reduced, speed = 20, fam = "prime";
+  let shareHist = [], seen = 0, score = {}, skipping = 0;
+  function colorOf(spec) { const i = specs.filter(s => s.family === spec.family).indexOf(spec); return C.series[i % 7]; }
+  function start() {
+    specs = TRADERS.filter(t => enabled.has(t.id)).map(t => ({ ...t, c: 1 }));
+    ex = new Exchange(specs);
+    ex.market.sched = prior === "fast" ? FastSchedule : PaperSchedule;
+    shareHist = []; seen = 0;
+    score = Object.fromEntries(FAMS.map(f => [f, { n: 0, market: 0, tr: specs.map(() => 0) }]));
+  }
+  function step() {
+    if (ex.day >= MAX_DAYS) { running = false; skipping = 0; return; }
+    ex.step();
+    shareHist.push(ex.shares());
+    for (; seen < ex.resolved.length; seen++) {
+      const f = ex.resolved[seen], S = score[f.family], y = f.truth ? 1 : 0;
+      S.n++; S.market += (f.price - y) ** 2;
+      f.opinions.forEach((q, i) => { if (q !== null) S.tr[i] += (q - y) ** 2; });
+    }
+  }
+
+  // ------------------------------------------------------------ board and tape
+  const FAMLABEL = { prime: "Prime", pi: "π digit", collatz: "Collatz" };
+  function renderBoard() {
+    const facts = ex.byDay.get(ex.day) || [], sh = shareHist[shareHist.length - 1] || [];
+    const maxShare = { };
+    specs.forEach((s, i) => { maxShare[s.family] = Math.max(maxShare[s.family] || 0, sh[i] || 0); });
+    $("board").innerHTML = facts.map((f, r) => {
+      const ticks = specs.map((s, i) => {
+        const q = f.opinions[i];
+        if (q === null || q === undefined) return "";
+        const h = 4 + 14 * Math.sqrt((sh[i] || 0) / (maxShare[s.family] || 1));
+        return `<span class="tk" style="left:${(q * 100).toFixed(2)}%;height:${h.toFixed(1)}px;background:${colorOf(s)}"></span>`;
+      }).join("");
+      return `<tr data-r="${r}"><td class="fam"><span class="chip${f.asked ? " asked" : ""}">${f.asked ? "Asked" : FAMLABEL[f.family]}</span></td>` +
+        `<td class="stmt">${f.text}</td>` +
+        `<td class="quote"><div class="track"><span class="fillbar" style="width:${(f.price * 100).toFixed(2)}%"></span>${ticks}</div></td>` +
+        `<td class="price">${cents(f.price)}</td><td class="due">settles day ${f.due}</td></tr>`;
+    }).join("");
+  }
+  function boardTip(ev) {
+    const tr = ev.target.closest("tr[data-r]"), tip = $("board-tip");
+    if (!tr) { tip.hidden = true; return; }
+    const f = (ex.byDay.get(ex.day) || [])[+tr.dataset.r], sh = shareHist[shareHist.length - 1] || [];
+    if (!f) { tip.hidden = true; return; }
+    const rows = specs.map((s, i) => (f.opinions[i] === null ? "" :
+      `<div class="row"><span><span class="sw" style="background:${colorOf(s)}"></span>${s.name}</span><span class="mono">${cents(f.opinions[i])} · say ${(100 * sh[i]).toFixed(0)}%</span></div>`)).join("");
+    tip.innerHTML = `<div style="font-weight:650;margin-bottom:3px">${f.text}</div>${rows}<div class="row" style="margin-top:3px;border-top:1px solid var(--rule);padding-top:3px"><span>Market</span><span class="mono">${cents(f.price)}</span></div>`;
+    tip.hidden = false;
+    placeTip(tip, tr.closest(".panel"), ev.clientX, ev.clientY);
+  }
+  function renderTape() {
+    const items = [];
+    for (let d = ex.day; d >= 1 && items.length < 24; d--)
+      for (const f of (ex.dueOn.get(d) || []).slice().reverse()) if (items.length < 24) items.push(f);
+    $("tape").innerHTML = items.map(f =>
+      `<li><span class="s">${f.text}</span><span class="r"><span class="dot${f.truth ? " yes" : ""}" aria-hidden="true"></span>${f.truth ? "true · pays $1" : "false · pays $0"}</span>` +
+      `<span class="d">listed day ${f.day} at ${cents(f.price)}, settled day ${f.settled}</span></li>`).join("") ||
+      `<li><span class="s muted">The first facts settle on day 3.</span></li>`;
+  }
+
+  // ------------------------------------------------------------ ask
+  let lastAsked = null;
+  function ask(ev) {
+    if (ev) ev.preventDefault();
+    const raw = $("ask-n").value.trim(), n = Number(raw);
+    if (!/^\d+$/.test(raw) || n < 2 || n > 9e15) {
+      $("ask-out").innerHTML = `<p class="err">Enter a whole number from 2 up to 9,000,000,000,000,000.</p>`;
+      lastAsked = null; return;
+    }
+    lastAsked = n;
+    const f = { family: "prime", n, s: atom(-1 - n) };
+    const p = ex.quote(f), sh = shareHist[shareHist.length - 1] || ex.shares();
+    const truth = isPrime(n);
+    const rows = specs.map((s, i) => (s.family !== "prime" ? "" :
+      `<li><span><span class="sw" style="background:${colorOf(s)}"></span>${s.name}</span><span class="mono">${cents(s.opinion(f, ex))} · say ${(100 * sh[i]).toFixed(0)}%</span></li>`)).join("");
+    $("ask-out").innerHTML = `<div class="small muted">Today the market would price “${n.toLocaleString("en-US")} is prime” at</div>` +
+      `<div class="big">${p === null ? "–" : cents(p)}</div>` +
+      `<div class="small">A primality test says it is <b>${truth ? "prime" : "composite"}</b>${enabled.has("mr") ? "." : ". No trader on the floor runs that test."}</div><ul>${rows}</ul>`;
+  }
+
+  // ------------------------------------------------------------ shares chart
+  let shareLayout = null;
+  function drawShares() {
+    const cv = $("shares"), { ctx, w, h } = setupCanvas(cv, 230);
+    const m = { l: 34, r: 8, t: 6, b: 22 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    ctx.clearRect(0, 0, w, h);
+    const idx = specs.map((s, i) => [s, i]).filter(([s]) => s.family === fam);
+    ctx.font = "11px " + C.font; ctx.fillStyle = C.ink3; ctx.textBaseline = "middle";
+    for (const v of [0, 0.5, 1]) { const y = m.t + (1 - v) * ph; ctx.fillStyle = C.rule2; ctx.fillRect(m.l, y, pw, 1); ctx.fillStyle = C.ink3; ctx.fillText(v === 0 ? "0%" : v === 1 ? "100%" : "50%", 0, y); }
+    const N = shareHist.length;
+    shareLayout = { m, pw, ph, N };
+    if (!N) return;
+    const cols = Math.max(1, Math.min(Math.floor(pw), N));
+    const at = c => shareHist[Math.min(N - 1, Math.floor(((c + 0.5) * N) / cols))];
+    let lower = new Array(cols).fill(0);
+    idx.forEach(([s, i]) => {
+      const upper = lower.map((lo, c) => lo + at(c)[i]);
+      ctx.beginPath();
+      for (let c = 0; c < cols; c++) ctx.lineTo(m.l + ((c + 0.5) / cols) * pw, m.t + (1 - upper[c]) * ph);
+      for (let c = cols - 1; c >= 0; c--) ctx.lineTo(m.l + ((c + 0.5) / cols) * pw, m.t + (1 - lower[c]) * ph);
+      ctx.closePath(); ctx.fillStyle = colorOf(s); ctx.fill();
+      ctx.strokeStyle = C.sheet; ctx.lineWidth = 1; ctx.stroke();
+      lower = upper;
+    });
+    ctx.fillStyle = C.ink3; ctx.textBaseline = "top";
+    ctx.fillText("day 1", m.l, h - m.b + 6);
+    const lab = "day " + fmt(N); ctx.fillText(lab, m.l + pw - ctx.measureText(lab).width, h - m.b + 6);
+    $("share-legend").innerHTML = idx.map(([s]) => `<span><span class="sw" style="background:${colorOf(s)}"></span>${s.name}</span>`).join("");
+  }
+  function shareTip(ev) {
+    const tip = $("share-tip");
+    if (!shareLayout || !shareLayout.N) { tip.hidden = true; return; }
+    const rect = $("shares").getBoundingClientRect(), x = ev.clientX - rect.left, { m, pw, N } = shareLayout;
+    if (x < m.l || x > m.l + pw) { tip.hidden = true; return; }
+    const d = Math.min(N, Math.max(1, Math.ceil(((x - m.l) / pw) * N))), sh = shareHist[d - 1];
+    tip.innerHTML = `<div style="font-weight:650">Day ${fmt(d)}</div>` + specs.map((s, i) => (s.family !== fam ? "" :
+      `<div class="row"><span><span class="sw" style="background:${colorOf(s)}"></span>${s.name}</span><span class="mono">${(100 * sh[i]).toFixed(1)}%</span></div>`)).join("");
+    tip.hidden = false; placeTip(tip, $("share-wrap"), ev.clientX, ev.clientY);
+  }
+
+  // ------------------------------------------------------------ calibration
+  function drawCal() {
+    const W = 360, H = 300, m = { l: 42, r: 12, t: 10, b: 40 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    const X = v => m.l + v * pw, Y = v => m.t + (1 - v) * ph;
+    const facts = ex.resolved.filter(f => f.family === fam).slice(-1500);
+    const bins = Array.from({ length: 10 }, () => ({ n: 0, y: 0, p: 0 }));
+    for (const f of facts) { const b = bins[Math.min(9, Math.floor(f.price * 10))]; b.n++; b.y += f.truth ? 1 : 0; b.p += f.price; }
+    let s = "";
+    for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+      s += `<line class="gl" x1="${X(0)}" x2="${X(1)}" y1="${Y(v)}" y2="${Y(v)}"/>`;
+      s += `<text class="tick" x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v * 100}%</text>`;
+      s += `<text class="tick" x="${X(v)}" y="${H - m.b + 16}" text-anchor="middle">${v * 100}¢</text>`;
+    }
+    s += `<line class="ax" x1="${X(0)}" x2="${X(1)}" y1="${Y(0)}" y2="${Y(0)}"/>`;
+    s += `<line class="diag" x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}"/>`;
+    s += `<text class="axl" x="${X(0.5)}" y="${H - 6}" text-anchor="middle">market price when listed</text>`;
+    s += `<text class="axl" x="12" y="${Y(0.5)}" text-anchor="middle" transform="rotate(-90 12 ${Y(0.5)})">turned out true</text>`;
+    const pts = bins.map((b, i) => ({ ...b, i })).filter(b => b.n >= 5).map(b => ({ x: b.p / b.n, y: b.y / b.n, n: b.n, i: b.i }));
+    if (pts.length > 1) s += `<polyline class="cal-line" points="${pts.map(p => X(p.x) + "," + Y(p.y)).join(" ")}"/>`;
+    for (const p of pts) s += `<circle class="cal" cx="${X(p.x)}" cy="${Y(p.y)}" r="5"/><circle cx="${X(p.x)}" cy="${Y(p.y)}" r="13" fill="transparent" data-x="${p.x}" data-y="${p.y}" data-n="${p.n}" data-i="${p.i}"/>`;
+    if (!pts.length) s += `<text class="axl" x="${X(0.5)}" y="${Y(0.5)}" text-anchor="middle">Waiting for facts to settle</text>`;
+    const svg = $("cal");
+    svg.innerHTML = s;
+    svg.querySelectorAll("circle[data-n]").forEach(c => {
+      c.addEventListener("pointerenter", ev => {
+        const tip = $("cal-tip");
+        tip.innerHTML = `<div>Priced ${c.dataset.i * 10}–${c.dataset.i * 10 + 10}¢ (average ${cents(+c.dataset.x)})</div><div><b>${(100 * c.dataset.y).toFixed(1)}%</b> true, of ${fmt(+c.dataset.n)} facts</div>`;
+        tip.hidden = false; placeTip(tip, $("cal-wrap"), ev.clientX, ev.clientY);
+      });
+      c.addEventListener("pointerleave", () => { $("cal-tip").hidden = true; });
+    });
+    $("cal-fam").textContent = { prime: "Primes", pi: "Digits of π", collatz: "Collatz" }[fam];
+    const S = score[fam];
+    if (S.n) {
+      let best = null;
+      specs.forEach((sp, i) => { if (sp.family === fam && (best === null || S.tr[i] < S.tr[best])) best = i; });
+      $("cal-score").innerHTML = `Brier score over all ${fmt(S.n)} settled facts: market <b class="mono">${(S.market / S.n).toFixed(4)}</b>, best single trader (${specs[best].name}) <b class="mono">${(S.tr[best] / S.n).toFixed(4)}</b>. Lower is better.`;
+    } else $("cal-score").textContent = "";
+  }
+
+  // ------------------------------------------------------------ roster
+  function renderRoster(full) {
+    const sh = shareHist[shareHist.length - 1] || [];
+    if (full) {
+      let html = "";
+      for (const F of FAMS) {
+        html += `<tr class="grp"><td colspan="5">${{ prime: "Primes", pi: "Digits of π", collatz: "Collatz" }[F]}</td></tr>`;
+        for (const t of TRADERS.filter(t => t.family === F)) {
+          const on = enabled.has(t.id), i = specs.findIndex(s => s.id === t.id);
+          html += `<tr><td><label class="tg"><input type="checkbox" id="tg-${t.id}" data-id="${t.id}"${on ? " checked" : ""}><span class="sr-only" style="position:absolute;left:-9999px">${t.name}</span></label></td>` +
+            `<td><div class="nm">${i >= 0 ? `<span class="sw" style="background:${colorOf(specs[i])}"></span>` : ""}${t.name}${t.optional ? ' <span class="chip">exact</span>' : ""}</div><div class="ab">${t.about}</div></td>` +
+            `<td class="num" id="sh-${t.id}"></td><td class="num" id="br-${t.id}"></td><td class="num" id="m-${t.id}"></td></tr>`;
+        }
+      }
+      $("roster").innerHTML = html;
+      $("roster").querySelectorAll("input[type=checkbox]").forEach(cb => cb.addEventListener("change", () => {
+        if (cb.checked) enabled.add(cb.dataset.id); else enabled.delete(cb.dataset.id);
+        const famIds = TRADERS.filter(t => t.family === TRADERS.find(x => x.id === cb.dataset.id).family).map(t => t.id);
+        if (!famIds.some(id => enabled.has(id))) { enabled.add(cb.dataset.id); cb.checked = true; return; }
+        restart();
+      }));
+    }
+    specs.forEach((s, i) => {
+      const S = score[s.family], st = ex.market.states[i];
+      const shEl = $("sh-" + s.id);
+      if (shEl) shEl.innerHTML = `<span class="sharebar"><i style="width:${(100 * (sh[i] || 0)).toFixed(1)}%;background:${colorOf(s)}"></i></span><span class="mono">${(100 * (sh[i] || 0)).toFixed(1)}%</span>`;
+      if ($("br-" + s.id)) $("br-" + s.id).innerHTML = `<span class="mono">${S.n ? (S.tr[i] / S.n).toFixed(4) : "–"}</span>`;
+      if ($("m-" + s.id)) $("m-" + s.id).innerHTML = `<span class="mono">$${st.M.toFixed(2)}</span>`;
+    });
+    for (const t of TRADERS) if (!enabled.has(t.id)) { $("sh-" + t.id).textContent = "off"; $("br-" + t.id).textContent = ""; $("m-" + t.id).textContent = ""; }
+  }
+
+  // ------------------------------------------------------------ loop
+  function renderAll() {
+    $("day").textContent = fmt(ex.day);
+    renderBoard(); renderTape(); drawShares(); drawCal(); renderRoster(false);
+    $("run").textContent = ex.day >= MAX_DAYS ? "Finished" : running ? "Pause" : "Run";
+    $("run").disabled = ex.day >= MAX_DAYS;
+    $("skip").textContent = skipping ? "Skipping… " + skipping + " days left" : "Skip ahead 500 days";
+  }
+  let lastT = 0, carry = 0, lastRender = 0;
+  function frame(t) {
+    const dt = lastT ? Math.min(100, t - lastT) : 16;
+    lastT = t;
+    let moved = false;
+    if (skipping) {
+      const t0 = performance.now();
+      while (skipping && performance.now() - t0 < 28) { step(); skipping--; moved = true; }
+    } else if (running) {
+      if (speed === "max") { const t0 = performance.now(); while (performance.now() - t0 < 12 && running) { step(); moved = true; } }
+      else { carry += (speed * dt) / 1000; while (carry >= 1 && running) { step(); carry -= 1; moved = true; } }
+    }
+    if (moved && (t - lastRender > 90 || !running)) { renderAll(); lastRender = t; }
+    requestAnimationFrame(frame);
+  }
+  function restart() {
+    start();
+    for (let i = 0; i < 120; i++) step();     // open on a market that already has history
+    renderRoster(true); renderAll(); if (lastAsked !== null) ask();
+  }
+  function init() {
+    readColors();
+    restart();
+    ask();
+    $("run").addEventListener("click", () => { running = !running; renderAll(); });
+    $("next").addEventListener("click", () => { running = false; step(); renderAll(); });
+    $("skip").addEventListener("click", () => { skipping = Math.min(500, MAX_DAYS - ex.day); });
+    $("reset").addEventListener("click", restart);
+    document.querySelectorAll("[data-speed]").forEach(b => b.addEventListener("click", () => {
+      speed = b.dataset.speed === "max" ? "max" : +b.dataset.speed; running = true;
+      document.querySelectorAll("[data-speed]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+      renderAll();
+    }));
+    document.querySelectorAll("[data-prior]").forEach(b => b.addEventListener("click", () => {
+      prior = b.dataset.prior;
+      document.querySelectorAll("[data-prior]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+      restart();
+    }));
+    document.querySelectorAll("[data-fam]").forEach(b => b.addEventListener("click", () => {
+      fam = b.dataset.fam;
+      document.querySelectorAll("[data-fam]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+      drawShares(); drawCal();
+    }));
+    $("ask-form").addEventListener("submit", ask);
+    $("ask-list").addEventListener("click", () => {
+      ask();
+      if (lastAsked === null) return;
+      ex.queue.push(lastAsked);
+      $("ask-out").insertAdjacentHTML("beforeend", `<p class="small">Listed for day ${fmt(ex.day + 1)}. It will appear on the board marked Asked, and the prover settles it a few days later.</p>`);
+    });
+    $("board").addEventListener("pointermove", boardTip);
+    $("board").addEventListener("pointerleave", () => { $("board-tip").hidden = true; });
+    $("shares").addEventListener("pointermove", shareTip);
+    $("shares").addEventListener("pointerleave", () => { $("share-tip").hidden = true; });
+    const redraw = () => { readColors(); renderRoster(true); renderAll(); };
+    window.addEventListener("resize", () => drawShares());
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+    new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => drawShares());
+    requestAnimationFrame(frame);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+</script>
